@@ -1,19 +1,42 @@
 use std::{iter::Peekable, str::Chars};
 
-struct Tokener<'a> {
+pub struct Tokener<'a> {
     source: Peekable<Chars<'a>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-enum Token {
+pub enum Token {
+    /// The '('.
     Lparam,
+
+    /// The ')'.
     Rparam,
+
+    /// The '{'.
     Lbrace,
+
+    /// The '}'.
     Rbrace,
+
+    /// The '['.
+    Lsquare,
+
+    /// The ']'.
+    Rsquare,
+
+    /// The ':'.
     Colon,
+
+    /// The ','.
     Comma,
+
+    /// The symbol.
     Sym(String),
+
+    /// The string.
     Str(String),
+
+    /// The number (i64).
     I64(i64),
 }
 
@@ -31,7 +54,7 @@ impl<'a> Tokener<'a> {
                 Some(c) => *c,
             };
             match peek_char {
-                ')' | ' ' | '\t' | '\n' => break,
+                ')' | ']' | '}' | ' ' | '\t' | '\n' => break,
                 ch => {
                     self.source.next();
                     sym.push(ch);
@@ -107,11 +130,13 @@ impl<'a> Iterator for Tokener<'a> {
                     self.source.next();
                     continue;
                 },
-                token @ ( '(' | ')' | '{' | '}' | ':' | ',' ) => {
+                token @ ( '(' | ')' | '[' | ']' | '{' | '}' | ':' | ',' ) => {
                     self.source.next();
                     let token = match token {
                         '(' => Token::Lparam,
                         ')' => Token::Rparam,
+                        '[' => Token::Lsquare,
+                        ']' => Token::Rsquare,
                         '{' => Token::Lbrace,
                         '}' => Token::Rbrace,
                         ':' => Token::Colon,
@@ -130,7 +155,7 @@ impl<'a> Iterator for Tokener<'a> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]
@@ -174,27 +199,82 @@ mod test {
         ]);
 
         let tokener = Tokener::new(r###"
-            (-> (Image::new "http://foobar.com/example.png")
-                (.resize { width: 100, height: 100 }))
+            (-> (Image::from_url "http://foobar.com/example.png")
+                (.resize { "width": 100, "height": 100 }))
         "###);
         assert_eq!(tokener.collect::<Vec<Token>>(), vec![
             Token::Lparam,
             Token::Sym("->".to_string()),
             Token::Lparam,
-            Token::Sym("Image::new".to_string()),
+            Token::Sym("Image::from_url".to_string()),
             Token::Str("http://foobar.com/example.png".to_string()),
             Token::Rparam,
             Token::Lparam,
             Token::Sym(".resize".to_string()),
             Token::Lbrace,
-            Token::Sym("width".to_string()),
+            Token::Str("width".to_string()),
             Token::Colon,
             Token::I64(100),
             Token::Comma,
-            Token::Sym("height".to_string()),
+            Token::Str("height".to_string()),
             Token::Colon,
             Token::I64(100),
             Token::Rbrace,
+            Token::Rparam,
+            Token::Rparam,
+        ]);
+
+        let tokener = Tokener::new(r###"
+            (fn fac [n]
+              (if (== n 0)
+                1
+                (begin
+                  (let nxt (fac (- n 1)))
+                  (* n nxt))))
+            (print (fac 10))
+        "###);
+        assert_eq!(tokener.collect::<Vec<Token>>(), vec![
+            Token::Lparam,
+            Token::Sym("fn".to_string()),
+            Token::Sym("fac".to_string()),
+            Token::Lsquare,
+            Token::Sym("n".to_string()),
+            Token::Rsquare,
+            Token::Lparam,
+            Token::Sym("if".to_string()),
+            Token::Lparam,
+            Token::Sym("==".to_string()),
+            Token::Sym("n".to_string()),
+            Token::I64(0),
+            Token::Rparam,
+            Token::I64(1),
+            Token::Lparam,
+            Token::Sym("begin".to_string()),
+            Token::Lparam,
+            Token::Sym("let".to_string()),
+            Token::Sym("nxt".to_string()),
+            Token::Lparam,
+            Token::Sym("fac".to_string()),
+            Token::Lparam,
+            Token::Sym("-".to_string()),
+            Token::Sym("n".to_string()),
+            Token::I64(1),
+            Token::Rparam,
+            Token::Rparam,
+            Token::Rparam,
+            Token::Lparam,
+            Token::Sym("*".to_string()),
+            Token::Sym("n".to_string()),
+            Token::Sym("nxt".to_string()),
+            Token::Rparam,
+            Token::Rparam,
+            Token::Rparam,
+            Token::Rparam,
+            Token::Lparam,
+            Token::Sym("print".to_string()),
+            Token::Lparam,
+            Token::Sym("fac".to_string()),
+            Token::I64(10),
             Token::Rparam,
             Token::Rparam,
         ]);
