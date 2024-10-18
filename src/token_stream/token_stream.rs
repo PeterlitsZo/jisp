@@ -32,6 +32,25 @@ impl<'a> TokenStream<'a> {
         }
         Some(Token::I64(num))
     }
+
+    fn next_sym(&mut self) -> Option<Token> {
+        let mut sym = String::new();
+        loop {
+            let peek_char = self.source.peek();
+            let peek_char = match peek_char {
+                None => break,
+                Some(c) => *c,
+            };
+            match peek_char {
+                ')' | ' ' | '\t' | '\n' => break,
+                ch => {
+                    self.source.next();
+                    sym.push(ch);
+                }
+            }
+        }
+        Some(Token::Sym(sym))
+    }
 }
 
 impl<'a> Iterator for TokenStream<'a> {
@@ -52,8 +71,17 @@ impl<'a> Iterator for TokenStream<'a> {
                     self.source.next();
                     continue;
                 },
+                token @ ( '(' | ')' ) => {
+                    self.source.next();
+                    let token = match token {
+                        '(' => Token::Lparam,
+                        ')' => Token::Rparam,
+                        _ => panic!("uncovered token"),
+                    };
+                    Some(token)
+                }
                 '0'..='9' => self.next_num(),
-                _ => unimplemented!("peek_char should be in /[ \\t\\n0-9]/ now"),
+                _ => self.next_sym(),
             };
             return result;
         }
@@ -69,6 +97,15 @@ mod tests {
         let token_stream = TokenStream::new("1");
         assert_eq!(token_stream.collect::<Vec<Token>>(), vec![
             Token::I64(1)
+        ]);
+
+        let token_stream = TokenStream::new("(+ 1 2)");
+        assert_eq!(token_stream.collect::<Vec<Token>>(), vec![
+            Token::Lparam,
+            Token::Sym("+".to_string()),
+            Token::I64(1),
+            Token::I64(2),
+            Token::Rparam,
         ]);
     }
 }

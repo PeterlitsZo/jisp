@@ -5,7 +5,7 @@ mod bytecode;
 
 fn main() {
     let token_stream = token_stream::TokenStream::new(r###"
-        1
+        (+ 1 1)
     "###);
     let ast = ast::AstBuilder::new(token_stream).build();
     let asm = asm::AsmBuilder::new(ast).build();

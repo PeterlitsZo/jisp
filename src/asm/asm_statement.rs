@@ -2,4 +2,5 @@
 pub enum AsmStatement {
     Ret,
     PushI64 { val: i64 },
+    AddI64,
 }

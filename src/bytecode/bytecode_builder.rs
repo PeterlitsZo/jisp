@@ -20,6 +20,7 @@ impl BytecodeBuilder {
                     bytecode.push_bytes(&val.to_le_bytes());
                 },
                 AsmStatement::Ret => bytecode.push_byte(ins::RET),
+                AsmStatement::AddI64 => bytecode.push_byte(ins::ADD_I64),
             }
         }
         bytecode
@@ -40,6 +41,21 @@ mod tests {
         let bytecode = bytecode_builder.build();
         assert_eq!(bytecode, Bytecode::from([
             ins::PUSH_I64, 0xff, 0, 0, 0, 0, 0, 0, 0,
+            ins::RET,
+        ]));
+
+        let asm = Asm::from([
+            AsmStatement::PushI64 { val: 1 },
+            AsmStatement::PushI64 { val: 2 },
+            AsmStatement::AddI64,
+            AsmStatement::Ret,
+        ]);
+        let bytecode_builder = BytecodeBuilder::new(asm);
+        let bytecode = bytecode_builder.build();
+        assert_eq!(bytecode, Bytecode::from([
+            ins::PUSH_I64, 0x01, 0, 0, 0, 0, 0, 0, 0,
+            ins::PUSH_I64, 0x02, 0, 0, 0, 0, 0, 0, 0,
+            ins::ADD_I64,
             ins::RET,
         ]));
     }

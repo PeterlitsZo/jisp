@@ -29,6 +29,12 @@ impl Runner {
                     self.stacks.push(val);
                     self.pc += 9;
                 },
+                ins::ADD_I64 => {
+                    let second = self.stacks.pop().unwrap();
+                    let first = self.stacks.pop().unwrap();
+                    self.stacks.push(first + second);
+                    self.pc += 1;
+                },
                 _ => panic!("unsupported byte"),
             }
         }
@@ -49,5 +55,14 @@ mod tests {
         ])).build();
         let result = Runner::new(bytecode).run();
         assert_eq!(result, 0xff);
+
+        let bytecode = BytecodeBuilder::new(Asm::from([
+            AsmStatement::PushI64 { val: 1 },
+            AsmStatement::PushI64 { val: 2 },
+            AsmStatement::AddI64,
+            AsmStatement::Ret,
+        ])).build();
+        let result = Runner::new(bytecode).run();
+        assert_eq!(result, 3);
     }
 }
