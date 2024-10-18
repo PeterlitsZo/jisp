@@ -2,7 +2,7 @@ use std::iter::Peekable;
 
 use super::{ast::Ast, item::{Array, Item, Object}, s::S, tokener::{Token, Tokener}};
 
-struct Builder<'a> {
+pub struct Builder<'a> {
     tokener: Peekable<Tokener<'a>>,
 }
 
@@ -260,7 +260,7 @@ impl<'a> Builder<'a> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-struct BuildError {
+pub struct BuildError {
     msg: String,
     inner: Option<Box<BuildError>>,
 }

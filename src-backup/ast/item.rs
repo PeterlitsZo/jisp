@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::s::S;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Item {
     Sym(String),
     Str(String),
@@ -12,7 +12,7 @@ pub enum Item {
     S(S),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Object {
     inner: HashMap<String, Item>,
 }
@@ -31,7 +31,7 @@ impl Object {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Array {
     inner: Vec<Item>,
 }
