@@ -88,7 +88,7 @@ impl<'a> AstBuilder<'a> {
                 _ => {
                     let err = Error::new(
                         &self.source_plain, this_token.pos(),
-                        ErrorMsg::Unexpected { want: "I64 or LPARAM" }
+                        ErrorMsg::Unexpected { want: "I64 or SYM" }
                     );
                     err.print();
                     exit(1);
