@@ -15,21 +15,22 @@ impl<'a, 'b> Error<'a, 'b> {
         Self { source_plain, pos, msg }
     }
 
+    /// Print the error to stderr.
     pub fn print(&self) {
         let lines = self.source_plain.lines();
         let mut lineno = 1;
         for line in lines {
-            println!("{}", line);
+            eprintln!("{}", line);
             if lineno == self.pos.lineno {
                 for _ in 0..(self.pos.offset - 1) {
                     // TODO (@PeterlitsZo) We guess 1 character's width == 1
                     // space's width. But the CJK / '\t' character are not.
-                    print!(" ");
+                    eprint!(" ");
                 }
-                print!("^ ");
+                eprint!("^ ");
                 match self.msg {
                     ErrorMsg::Unexpected { want } => {
-                        println!("want {}.", want)
+                        eprintln!("want {}.", want)
                     }
                 }
             }
