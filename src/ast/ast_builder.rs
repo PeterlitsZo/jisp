@@ -69,7 +69,7 @@ impl<'a> AstBuilder<'a> {
         self.skip(TokenVal::Lparam);
         loop {
             let peek_token = self.token_stream.peek();
-            let this_token = match peek_token {
+            let peek_token = match peek_token {
                 Some(tok) if tok.val() == &TokenVal::Rparam => break,
                 Some(tok) if tok.val() == &TokenVal::EOF => {
                     let err = Error::new(
@@ -79,16 +79,23 @@ impl<'a> AstBuilder<'a> {
                     err.print();
                     exit(1);
                 },
-                Some(_) => self.token_stream.next().unwrap(),
+                Some(tok) => tok.clone(),
                 None => panic!("should not peek None")
             };
-            let s_exp = match this_token.val() {
-                TokenVal::I64(val) => SExp::I64(*val),
-                TokenVal::Sym(sym) => SExp::Sym(sym.clone()),
+            let s_exp = match peek_token.val() {
+                TokenVal::Lparam => self.next_list(),
+                TokenVal::I64(val) => {
+                    self.skip(TokenVal::I64(*val));
+                    SExp::I64(*val)
+                }
+                TokenVal::Sym(sym) => {
+                    self.skip(TokenVal::Sym(sym.clone()));
+                    SExp::Sym(sym.clone())
+                }
                 _ => {
                     let err = Error::new(
-                        &self.source_plain, this_token.pos(),
-                        ErrorMsg::Unexpected { want: "I64 or SYM" }
+                        &self.source_plain, peek_token.pos(),
+                        ErrorMsg::Unexpected { want: "LPARAM, I64 or SYM" }
                     );
                     err.print();
                     exit(1);

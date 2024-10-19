@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 startup() {
+    cargo test
     cargo build --release
 }
 
@@ -30,5 +31,10 @@ test 2 '2'
 test 2 '(+ 1 1)'
 test 3 '(+ 1 2)'
 test 350 '(+ 100 250)'
+test 15 '(+ 1 2 3 4 5)'
+test 15 '(+ (+ 1 2) (+ 3 4 5))'
+
+test 4 '(+ 1 1 (- 4 2))'
+test 5 '(+ 5 (- 5 2 3) (- 13 13))'
 
 cleanup

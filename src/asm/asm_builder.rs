@@ -21,28 +21,7 @@ impl AsmBuilder {
                     asm.push_statement(AsmStatement::Ret);
                 }
                 SExp::List(lst) => {
-                    if lst.len() != 3 {
-                        // TODO (@PeterlitsZo) Better error message.
-                        panic!("the lst's length should be 3")
-                    }
-                    match &lst[0] {
-                        SExp::Sym(sym) if sym == &"+".to_string() => {}
-                        // TODO (@PeterlitsZo) Better error message.
-                        _ => panic!("we hope the first item is PLUS")
-                    }
-                    let first = match &lst[1] {
-                        SExp::I64(first) => *first,
-                        // TODO (@PeterlitsZo) Better error message.
-                        _ => panic!("we hope the second item is INTERGER")
-                    };
-                    let second = match &lst[2] {
-                        SExp::I64(second) => *second,
-                        // TODO (@PeterlitsZo) Better error message.
-                        _ => panic!("we hope the third item is INTERGER")
-                    };
-                    asm.push_statement(AsmStatement::PushI64 { val: first });
-                    asm.push_statement(AsmStatement::PushI64 { val: second });
-                    asm.push_statement(AsmStatement::AddI64);
+                    self.build_list(&mut asm, lst);
                     asm.push_statement(AsmStatement::Ret);
                 }
                 // TODO (@PeterlitsZo) Better error message.
@@ -50,6 +29,49 @@ impl AsmBuilder {
             }
         }
         asm
+    }
+
+    fn build_list(&self, asm: &mut Asm, lst: &Vec<SExp>) {
+        enum Op {
+            Add,
+            Sub,
+        }
+
+        let op = match &lst[0] {
+            SExp::Sym(sym) if sym == &"+".to_string() => Op::Add,
+            SExp::Sym(sym) if sym == &"-".to_string() => Op::Sub,
+            // TODO (@PeterlitsZo) Better error message.
+            _ => panic!("we hope the first item is PLUS")
+        };
+
+        match &lst[1] {
+            SExp::I64(first) => {
+                asm.push_statement(AsmStatement::PushI64 { val: *first });
+            }
+            SExp::List(lst) => {
+                self.build_list(asm, lst);
+            }
+            // TODO (@PeterlitsZo) Better error message.
+            _ => panic!("we hope the second item is INTERGER or LIST")
+        };
+
+        for i in 2..lst.len() {
+            match &lst[i] {
+                SExp::I64(val) => {
+                    asm.push_statement(AsmStatement::PushI64 { val: *val });
+                },
+                SExp::List(lst) => {
+                    self.build_list(asm, lst);
+                }
+                // TODO (@PeterlitsZo) Better error message.
+                _ => panic!("we hope the item in rest is INTERGER")
+            };
+
+            match op {
+                Op::Add => asm.push_statement(AsmStatement::AddI64),
+                Op::Sub => asm.push_statement(AsmStatement::SubI64),
+            }
+        }
     }
 }
 

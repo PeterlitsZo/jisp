@@ -21,6 +21,7 @@ impl BytecodeBuilder {
                 },
                 AsmStatement::Ret => bytecode.push_byte(ins::RET),
                 AsmStatement::AddI64 => bytecode.push_byte(ins::ADD_I64),
+                AsmStatement::SubI64 => bytecode.push_byte(ins::SUB_I64),
             }
         }
         bytecode
