@@ -12,7 +12,7 @@ test() {
     if [ "$result" = "$wanted" ]; then
         echo "$jisp_content => $result"
     else
-        echo "$jisp_content => $wanted expected, but got $result"
+        echo "$jisp_content => $wanted expected"
         exit 1
     fi
 }
