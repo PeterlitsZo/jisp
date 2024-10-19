@@ -1,21 +1,44 @@
 use std::{iter::Peekable, str::Chars};
 
-use super::Token;
+use super::{Token, TokenPos, TokenVal};
 
 /// A stream of [Token].
 pub struct TokenStream<'a> {
     // The source code.
     source: Peekable<Chars<'a>>,
+
+    // The source code, but plain.
+    source_plain: &'a str,
+
+    /// The position of current token.
+    pos: TokenPos,
+
+    /// The position of the EOF.
+    eof_pos: TokenPos,
+
+    /// If the EOF is sent.
+    eof_sent: bool,
 }
 
 impl<'a> TokenStream<'a> {
     /// Create a new [TokenStream] from the source.
     pub fn new(source: &'a str) -> Self {
-        Self { source: source.chars().peekable() }
+        Self {
+            source: source.chars().peekable(),
+            source_plain: source,
+            pos: TokenPos { lineno: 1, offset: 1 },
+            eof_pos: TokenPos { lineno: 1, offset: 1 },
+            eof_sent: false,
+        }
+    }
+
+    pub fn source_plain(&self) -> &str {
+        self.source_plain
     }
 
     fn next_num(&mut self) -> Option<Token> {
         let mut num = 0_i64;
+        let mut next_pos = self.pos;
         loop {
             let peek_char = self.source.peek();
             let peek_char = match peek_char {
@@ -24,17 +47,22 @@ impl<'a> TokenStream<'a> {
             };
             match peek_char {
                 c @ '0'..='9' => {
-                    self.source.next();
+                    self.skip_char();
+                    next_pos.offset += 1;
                     num = num * 10 + (c as i64) - ('0' as i64);
                 }
                 _ => break,
             }
         }
-        Some(Token::I64(num))
+        let tok = Token::new(self.pos, TokenVal::I64(num));
+        self.pos = next_pos;
+        self.eof_pos = self.pos;
+        Some(tok)
     }
 
     fn next_sym(&mut self) -> Option<Token> {
         let mut sym = String::new();
+        let mut next_pos = self.pos;
         loop {
             let peek_char = self.source.peek();
             let peek_char = match peek_char {
@@ -44,12 +72,20 @@ impl<'a> TokenStream<'a> {
             match peek_char {
                 ')' | ' ' | '\t' | '\n' => break,
                 ch => {
-                    self.source.next();
+                    self.skip_char();
+                    next_pos.offset += 1;
                     sym.push(ch);
                 }
             }
         }
-        Some(Token::Sym(sym))
+        let tok = Token::new(self.pos, TokenVal::Sym(sym));
+        self.pos = next_pos;
+        self.eof_pos = self.pos;
+        Some(tok)
+    }
+
+    fn skip_char(&mut self) {
+        self.source.next();
     }
 }
 
@@ -61,23 +97,37 @@ impl<'a> Iterator for TokenStream<'a> {
             // Peek a char.
             let peek_char = self.source.peek();
             let peek_char = match peek_char {
-                None => return None,
+                None if !self.eof_sent => {
+                    self.eof_sent = true;
+                    return Some(Token::new(self.eof_pos, TokenVal::EOF));
+                },
+                None => {
+                    return None;
+                },
                 Some(c) => *c,
             };
 
             // Try to build a token from chars.
             let result = match peek_char {
                 ' ' | '\t' | '\n' => {
-                    self.source.next();
+                    self.skip_char();
+                    if peek_char == '\n' {
+                        self.pos.lineno += 1;
+                        self.pos.offset = 1;
+                    } else {
+                        self.pos.offset += 1;
+                    }
                     continue;
                 },
                 token @ ( '(' | ')' ) => {
-                    self.source.next();
+                    self.skip_char();
                     let token = match token {
-                        '(' => Token::Lparam,
-                        ')' => Token::Rparam,
+                        '(' => Token::new(self.pos, TokenVal::Lparam),
+                        ')' => Token::new(self.pos, TokenVal::Rparam),
                         _ => panic!("uncovered token"),
                     };
+                    self.pos.offset += 1;
+                    self.eof_pos = self.pos;
                     Some(token)
                 }
                 '0'..='9' => self.next_num(),
@@ -96,16 +146,18 @@ mod tests {
     fn basic() {
         let token_stream = TokenStream::new("1");
         assert_eq!(token_stream.collect::<Vec<Token>>(), vec![
-            Token::I64(1)
+            Token::new(TokenPos{ lineno: 1, offset: 1 }, TokenVal::I64(1)),
+            Token::new(TokenPos{ lineno: 1, offset: 2 }, TokenVal::EOF),
         ]);
 
-        let token_stream = TokenStream::new("(+ 1 2)");
+        let token_stream = TokenStream::new("(+ 1 2)\n");
         assert_eq!(token_stream.collect::<Vec<Token>>(), vec![
-            Token::Lparam,
-            Token::Sym("+".to_string()),
-            Token::I64(1),
-            Token::I64(2),
-            Token::Rparam,
+            Token::new(TokenPos{ lineno: 1, offset: 1 }, TokenVal::Lparam),
+            Token::new(TokenPos{ lineno: 1, offset: 2 }, TokenVal::Sym("+".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 4 }, TokenVal::I64(1)),
+            Token::new(TokenPos{ lineno: 1, offset: 6 }, TokenVal::I64(2)),
+            Token::new(TokenPos{ lineno: 1, offset: 7 }, TokenVal::Rparam),
+            Token::new(TokenPos{ lineno: 1, offset: 8 }, TokenVal::EOF),
         ]);
     }
 }

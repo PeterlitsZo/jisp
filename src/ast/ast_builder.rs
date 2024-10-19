@@ -1,18 +1,22 @@
-use std::iter::Peekable;
+use std::{iter::Peekable, process::exit};
 
-use crate::token_stream::{Token, TokenStream};
+use crate::token_stream::{TokenStream, TokenVal};
 
-use super::{Ast, SExp};
+use super::{Ast, Error, ErrorMsg, SExp};
 
 /// The builder of [Ast].
 pub struct AstBuilder<'a> {
+    source_plain: String,
     token_stream: Peekable<TokenStream<'a>>,
 }
 
 impl<'a> AstBuilder<'a> {
     /// Build a [AstBuilder] from [TokenStream].
     pub fn new(token_stream: TokenStream<'a>) -> Self {
-        Self { token_stream: token_stream.peekable() }
+        Self {
+            source_plain: token_stream.source_plain().to_string(),
+            token_stream: token_stream.peekable()
+        }
     }
 
     /// Build a [Ast].
@@ -21,54 +25,78 @@ impl<'a> AstBuilder<'a> {
         loop {
             let token = self.token_stream.peek();
             let token = match token {
+                Some(t) if t.val() == &TokenVal::EOF => break,
                 Some(t) => t.clone(),
-                None => break,
+                None => panic!("should not peek None"),
             };
-            let s_exp = match token {
-                Token::I64(val) => {
-                    self.skip(Token::I64(val));
-                    SExp::I64(val)
+            let s_exp = match token.val() {
+                TokenVal::I64(val) => {
+                    self.skip(TokenVal::I64(*val));
+                    SExp::I64(*val)
                 }
-                Token::Lparam => {
+                TokenVal::Lparam => {
                     self.next_list()
                 }
-                // TODO (@PeterlitsZo) Better error message.
-                _ => panic!("unsupported token"),
+                _ => {
+                    let err = Error::new(
+                        &self.source_plain, token.pos(),
+                        ErrorMsg::Unexpected { want: "I64 or LPARAM" }
+                    );
+                    err.print();
+                    exit(1);
+                },
             };
             ast.push_s_exp(s_exp);
         }
         ast
     }
 
-    fn skip(&mut self, token: Token) {
-        let next_token = self.token_stream.next();
-        if next_token.unwrap() == token {
+    fn skip(&mut self, val: TokenVal) {
+        let next_token = self.token_stream.next().unwrap();
+        if next_token.val() == &val {
             return;
         }
-        // TODO (@PeterlitsZo) Better error message.
-        panic!("try skip but unexpected token")
+        let err = Error::new(
+            &self.source_plain, next_token.pos(),
+            ErrorMsg::Unexpected { want: val.name() }
+        );
+        err.print();
+        exit(1);
     }
 
     fn next_list(&mut self) -> SExp {
         let mut result = vec![];
-        self.skip(Token::Lparam);
+        self.skip(TokenVal::Lparam);
         loop {
             let peek_token = self.token_stream.peek();
             let this_token = match peek_token {
-                Some(Token::Rparam) => break,
-                // TODO (@PeterlitsZo) Better error message.
-                None => panic!("unexpected end"),
+                Some(tok) if tok.val() == &TokenVal::Rparam => break,
+                Some(tok) if tok.val() == &TokenVal::EOF => {
+                    let err = Error::new(
+                        &self.source_plain, tok.pos(),
+                        ErrorMsg::Unexpected { want: "RPARAM, I64 or LPARAM" }
+                    );
+                    err.print();
+                    exit(1);
+                },
                 Some(_) => self.token_stream.next().unwrap(),
+                None => panic!("should not peek None")
             };
-            let s_exp = match this_token {
-                Token::I64(val) => SExp::I64(val),
-                Token::Sym(sym) => SExp::Sym(sym),
-                // TODO (@PeterlitsZo) Better error message.
-                _ => panic!("unexpected token")
+            let s_exp = match this_token.val() {
+                TokenVal::I64(val) => SExp::I64(*val),
+                TokenVal::Sym(sym) => SExp::Sym(sym.clone()),
+                _ => {
+                    let err = Error::new(
+                        &self.source_plain, this_token.pos(),
+                        ErrorMsg::Unexpected { want: "I64 or LPARAM" }
+                    );
+                    err.print();
+                    exit(1);
+                }
             };
             result.push(s_exp);
         }
-        self.skip(Token::Rparam);
+        self.skip(TokenVal::Rparam);
         SExp::List(result)
     }
 }
