@@ -41,6 +41,18 @@ impl Runner {
                     self.stacks.push(first - second);
                     self.pc += 1;
                 },
+                ins::MUL_I64 => {
+                    let second = self.stacks.pop().unwrap();
+                    let first = self.stacks.pop().unwrap();
+                    self.stacks.push(first * second);
+                    self.pc += 1;
+                },
+                ins::DIV_I64 => {
+                    let second = self.stacks.pop().unwrap();
+                    let first = self.stacks.pop().unwrap();
+                    self.stacks.push(first / second);
+                    self.pc += 1;
+                },
                 _ => panic!("unsupported byte"),
             }
         }

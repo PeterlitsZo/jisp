@@ -22,6 +22,8 @@ impl BytecodeBuilder {
                 AsmStatement::Ret => bytecode.push_byte(ins::RET),
                 AsmStatement::AddI64 => bytecode.push_byte(ins::ADD_I64),
                 AsmStatement::SubI64 => bytecode.push_byte(ins::SUB_I64),
+                AsmStatement::MulI64 => bytecode.push_byte(ins::MUL_I64),
+                AsmStatement::DivI64 => bytecode.push_byte(ins::DIV_I64),
             }
         }
         bytecode

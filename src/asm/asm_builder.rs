@@ -32,16 +32,15 @@ impl AsmBuilder {
     }
 
     fn build_list(&self, asm: &mut Asm, lst: &Vec<SExp>) {
-        enum Op {
-            Add,
-            Sub,
-        }
+        enum Op { Add, Sub, Mul, Div }
 
         let op = match &lst[0] {
             SExp::Sym(sym) if sym == &"+".to_string() => Op::Add,
             SExp::Sym(sym) if sym == &"-".to_string() => Op::Sub,
+            SExp::Sym(sym) if sym == &"*".to_string() => Op::Mul,
+            SExp::Sym(sym) if sym == &"/".to_string() => Op::Div,
             // TODO (@PeterlitsZo) Better error message.
-            _ => panic!("we hope the first item is PLUS")
+            _ => panic!("we hope the first item is ADD, SUB, MUL or DIV")
         };
 
         match &lst[1] {
@@ -70,6 +69,8 @@ impl AsmBuilder {
             match op {
                 Op::Add => asm.push_statement(AsmStatement::AddI64),
                 Op::Sub => asm.push_statement(AsmStatement::SubI64),
+                Op::Mul => asm.push_statement(AsmStatement::MulI64),
+                Op::Div => asm.push_statement(AsmStatement::DivI64),
             }
         }
     }
