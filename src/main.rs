@@ -13,5 +13,8 @@ fn main() {
     let asm = asm::AsmBuilder::new(ast).build();
     let bytecode = bytecode::BytecodeBuilder::new(asm).build();
     let val = bytecode::Runner::new(bytecode).run();
-    println!("{}", val);
+    match val {
+        bytecode::RunnerResult::I64(val) => println!("{}", val),
+        bytecode::RunnerResult::Bool(val) => println!("{}", val),
+    }
 }

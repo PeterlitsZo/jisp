@@ -15,15 +15,23 @@ impl BytecodeBuilder {
         let mut bytecode = Bytecode::new();
         for stmt in self.asm.statements() {
             match stmt {
+                AsmStatement::Ret => bytecode.push_byte(ins::RET),
+
                 AsmStatement::PushI64 { val } => {
                     bytecode.push_byte(ins::PUSH_I64);
                     bytecode.push_bytes(&val.to_le_bytes());
                 },
-                AsmStatement::Ret => bytecode.push_byte(ins::RET),
-                AsmStatement::AddI64 => bytecode.push_byte(ins::ADD_I64),
-                AsmStatement::SubI64 => bytecode.push_byte(ins::SUB_I64),
-                AsmStatement::MulI64 => bytecode.push_byte(ins::MUL_I64),
-                AsmStatement::DivI64 => bytecode.push_byte(ins::DIV_I64),
+
+                AsmStatement::Add => bytecode.push_byte(ins::ADD),
+                AsmStatement::Sub => bytecode.push_byte(ins::SUB),
+                AsmStatement::Mul => bytecode.push_byte(ins::MUL),
+                AsmStatement::Div => bytecode.push_byte(ins::DIV),
+                AsmStatement::Eq => bytecode.push_byte(ins::EQ),
+                AsmStatement::Ne => bytecode.push_byte(ins::NE),
+                AsmStatement::Lt => bytecode.push_byte(ins::LT),
+                AsmStatement::Le => bytecode.push_byte(ins::LE),
+                AsmStatement::Gt => bytecode.push_byte(ins::GT),
+                AsmStatement::Ge => bytecode.push_byte(ins::GE),
             }
         }
         bytecode
@@ -50,7 +58,7 @@ mod tests {
         let asm = Asm::from([
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::PushI64 { val: 2 },
-            AsmStatement::AddI64,
+            AsmStatement::Add,
             AsmStatement::Ret,
         ]);
         let bytecode_builder = BytecodeBuilder::new(asm);
@@ -58,7 +66,7 @@ mod tests {
         assert_eq!(bytecode, Bytecode::from([
             ins::PUSH_I64, 0x01, 0, 0, 0, 0, 0, 0, 0,
             ins::PUSH_I64, 0x02, 0, 0, 0, 0, 0, 0, 0,
-            ins::ADD_I64,
+            ins::ADD,
             ins::RET,
         ]));
     }

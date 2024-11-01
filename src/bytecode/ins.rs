@@ -1,6 +1,14 @@
 pub const RET: u8 = 0x00;
-pub const PUSH_I64: u8 = 0x01;
-pub const ADD_I64: u8 = 0x02;
-pub const SUB_I64: u8 = 0x03;
-pub const MUL_I64: u8 = 0x04;
-pub const DIV_I64: u8 = 0x05;
+
+pub const PUSH_I64: u8 = 0x11;
+
+pub const ADD: u8 = 0x22;
+pub const SUB: u8 = 0x23;
+pub const MUL: u8 = 0x24;
+pub const DIV: u8 = 0x25;
+pub const EQ: u8 = 0x26;
+pub const NE: u8 = 0x27;
+pub const LT: u8 = 0x28;
+pub const LE: u8 = 0x29;
+pub const GT: u8 = 0x2A;
+pub const GE: u8 = 0x2B;

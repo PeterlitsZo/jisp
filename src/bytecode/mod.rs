@@ -6,3 +6,4 @@ mod ins;
 pub type Bytecode = bytecode::Bytecode;
 pub type BytecodeBuilder = bytecode_builder::BytecodeBuilder;
 pub type Runner = runner::Runner;
+pub type RunnerResult = runner::Value;

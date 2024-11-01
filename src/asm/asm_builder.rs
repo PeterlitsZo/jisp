@@ -32,15 +32,21 @@ impl AsmBuilder {
     }
 
     fn build_list(&self, asm: &mut Asm, lst: &Vec<SExp>) {
-        enum Op { Add, Sub, Mul, Div }
+        enum Op { Add, Sub, Mul, Div, Eq, Ne, Lt, Le, Gt, Ge }
 
         let op = match &lst[0] {
             SExp::Sym(sym) if sym == &"+".to_string() => Op::Add,
             SExp::Sym(sym) if sym == &"-".to_string() => Op::Sub,
             SExp::Sym(sym) if sym == &"*".to_string() => Op::Mul,
             SExp::Sym(sym) if sym == &"/".to_string() => Op::Div,
+            SExp::Sym(sym) if sym == &"==".to_string() => Op::Eq,
+            SExp::Sym(sym) if sym == &"!=".to_string() => Op::Ne,
+            SExp::Sym(sym) if sym == &"<".to_string() => Op::Lt,
+            SExp::Sym(sym) if sym == &"<=".to_string() => Op::Le,
+            SExp::Sym(sym) if sym == &">".to_string() => Op::Gt,
+            SExp::Sym(sym) if sym == &">=".to_string() => Op::Ge,
             // TODO (@PeterlitsZo) Better error message.
-            _ => panic!("we hope the first item is ADD, SUB, MUL or DIV")
+            _ => panic!("unexpected first item")
         };
 
         match &lst[1] {
@@ -67,10 +73,16 @@ impl AsmBuilder {
             };
 
             match op {
-                Op::Add => asm.push_statement(AsmStatement::AddI64),
-                Op::Sub => asm.push_statement(AsmStatement::SubI64),
-                Op::Mul => asm.push_statement(AsmStatement::MulI64),
-                Op::Div => asm.push_statement(AsmStatement::DivI64),
+                Op::Add => asm.push_statement(AsmStatement::Add),
+                Op::Sub => asm.push_statement(AsmStatement::Sub),
+                Op::Mul => asm.push_statement(AsmStatement::Mul),
+                Op::Div => asm.push_statement(AsmStatement::Div),
+                Op::Eq => asm.push_statement(AsmStatement::Eq),
+                Op::Ne => asm.push_statement(AsmStatement::Ne),
+                Op::Lt => asm.push_statement(AsmStatement::Lt),
+                Op::Le => asm.push_statement(AsmStatement::Le),
+                Op::Gt => asm.push_statement(AsmStatement::Gt),
+                Op::Ge => asm.push_statement(AsmStatement::Ge),
             }
         }
     }
@@ -96,7 +108,7 @@ mod tests {
         ]));
 
         let token_stream = TokenStream::new(r###"
-            (+ 1 2)
+            (+ 1 2 3 4 5)
         "###);
         let ast = AstBuilder::new(token_stream).build();
         let asm = AsmBuilder::new(ast).build();
@@ -104,7 +116,26 @@ mod tests {
         assert_eq!(asm, Asm::from([
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::PushI64 { val: 2 },
-            AsmStatement::AddI64,
+            AsmStatement::Add,
+            AsmStatement::PushI64 { val: 3 },
+            AsmStatement::Add,
+            AsmStatement::PushI64 { val: 4 },
+            AsmStatement::Add,
+            AsmStatement::PushI64 { val: 5 },
+            AsmStatement::Add,
+            AsmStatement::Ret,
+        ]));
+
+        let token_stream = TokenStream::new(r###"
+            (== 1 2)
+        "###);
+        let ast = AstBuilder::new(token_stream).build();
+        let asm = AsmBuilder::new(ast).build();
+
+        assert_eq!(asm, Asm::from([
+            AsmStatement::PushI64 { val: 1 },
+            AsmStatement::PushI64 { val: 2 },
+            AsmStatement::Eq,
             AsmStatement::Ret,
         ]));
     }
