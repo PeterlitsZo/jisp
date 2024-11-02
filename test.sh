@@ -51,4 +51,7 @@ test true '(>= 4 3)'
 test false '(> 3 3)'
 test true '(>= 3 3)'
 
+test 25 '(let a 13) (let b 12) (+ a b)'
+test 6 '(let a (+ 4 5)) (let b (/ 21 7)) (- a b)'
+
 cleanup

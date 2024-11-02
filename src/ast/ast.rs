@@ -1,7 +1,7 @@
 use super::SExp;
 
 /// The AST.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Ast {
     s_exps: Vec<SExp>,
 }

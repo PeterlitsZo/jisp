@@ -12,3 +12,6 @@ pub const LT: u8 = 0x28;
 pub const LE: u8 = 0x29;
 pub const GT: u8 = 0x2A;
 pub const GE: u8 = 0x2B;
+
+pub const STORE: u8 = 0x30;
+pub const LOAD: u8 = 0x31;

@@ -14,4 +14,7 @@ pub enum AsmStatement {
     Le,
     Gt,
     Ge,
+
+    Store { index: u32 }, // Move the top of stack to the local (by index).
+    Load { index: u32 }, // Load the local (by index) to the top of stack.
 }

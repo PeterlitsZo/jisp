@@ -12,7 +12,7 @@ impl BytecodeBuilder {
     }
 
     pub fn build(self) -> Bytecode {
-        let mut bytecode = Bytecode::new();
+        let mut bytecode = Bytecode::new(self.asm.locals);
         for stmt in self.asm.statements() {
             match stmt {
                 AsmStatement::Ret => bytecode.push_byte(ins::RET),
@@ -32,6 +32,15 @@ impl BytecodeBuilder {
                 AsmStatement::Le => bytecode.push_byte(ins::LE),
                 AsmStatement::Gt => bytecode.push_byte(ins::GT),
                 AsmStatement::Ge => bytecode.push_byte(ins::GE),
+
+                AsmStatement::Load { index } => {
+                    bytecode.push_byte(ins::LOAD);
+                    bytecode.push_bytes(&index.to_le_bytes());
+                },
+                AsmStatement::Store { index } => {
+                    bytecode.push_byte(ins::STORE);
+                    bytecode.push_bytes(&index.to_le_bytes());
+                },
             }
         }
         bytecode
@@ -44,18 +53,18 @@ mod tests {
 
     #[test]
     fn basic() {
-        let asm = Asm::from([
+        let asm = Asm::from(0, [
             AsmStatement::PushI64 { val: 0xff },
             AsmStatement::Ret,
         ]);
         let bytecode_builder = BytecodeBuilder::new(asm);
         let bytecode = bytecode_builder.build();
-        assert_eq!(bytecode, Bytecode::from([
+        assert_eq!(bytecode, Bytecode::from(0, [
             ins::PUSH_I64, 0xff, 0, 0, 0, 0, 0, 0, 0,
             ins::RET,
         ]));
 
-        let asm = Asm::from([
+        let asm = Asm::from(0, [
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::PushI64 { val: 2 },
             AsmStatement::Add,
@@ -63,7 +72,7 @@ mod tests {
         ]);
         let bytecode_builder = BytecodeBuilder::new(asm);
         let bytecode = bytecode_builder.build();
-        assert_eq!(bytecode, Bytecode::from([
+        assert_eq!(bytecode, Bytecode::from(0, [
             ins::PUSH_I64, 0x01, 0, 0, 0, 0, 0, 0, 0,
             ins::PUSH_I64, 0x02, 0, 0, 0, 0, 0, 0, 0,
             ins::ADD,
