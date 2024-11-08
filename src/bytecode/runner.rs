@@ -110,6 +110,21 @@ impl Runner {
                     let val = self.stack.pop();
                     self.locals.set(index as usize, val);
                     self.pc += 5;
+                },
+
+                ins::JUMP => {
+                    let offset = &bytes[self.pc+1..self.pc+5];
+                    let offset = u32::from_le_bytes(offset.try_into().unwrap());
+                    self.pc = offset as usize;
+                }
+                ins::JUMP_FALSE => {
+                    let offset = &bytes[self.pc+1..self.pc+5];
+                    let offset = u32::from_le_bytes(offset.try_into().unwrap());
+                    if !self.stack.pop_bool() {
+                        self.pc = offset as usize;
+                    } else {
+                        self.pc += 5;
+                    }
                 }
 
                 _ => panic!("unexpected byte"),
@@ -188,7 +203,7 @@ pub enum Value {
 
 #[cfg(test)]
 mod tests {
-    use crate::{asm::{Asm, AsmStatement}, bytecode::{self, bytecode_builder::BytecodeBuilder}};
+    use crate::{asm::{Asm, AsmLabel, AsmStatement}, bytecode::{self, bytecode_builder::BytecodeBuilder}};
 
     use super::*;
 
@@ -268,5 +283,25 @@ mod tests {
         ])).build();
         let result = Runner::new(bytecode).run();
         assert_eq!(result, Value::I64(25));
+    }
+
+    #[test]
+    fn label_jump() {
+        let bytecode = BytecodeBuilder::new(Asm::from(0, [
+            AsmStatement::PushI64 { val: 2 },
+            AsmStatement::PushI64 { val: 1 },
+            AsmStatement::Eq,
+            AsmStatement::JumpFalse { label: AsmLabel::new(".L1") },
+            AsmStatement::PushI64 { val: 1 },
+            AsmStatement::Jump { label: AsmLabel::new(".L2") },
+            AsmStatement::Label { label: AsmLabel::new(".L1") },
+            AsmStatement::PushI64 { val: 2 },
+            AsmStatement::PushI64 { val: 1 },
+            AsmStatement::Mul,
+            AsmStatement::Label { label: AsmLabel::new(".L2") },
+            AsmStatement::Ret,
+        ])).build();
+        let result = Runner::new(bytecode).run();
+        assert_eq!(result, Value::I64(2));
     }
 }

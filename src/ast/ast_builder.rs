@@ -134,4 +134,28 @@ mod tests {
             ]),
         ]));
     }
+
+    #[test]
+    fn if_stmt() {
+        let token_stream = TokenStream::new(r###"
+            (if (== 2 1) 1 (* 2 1))
+        "###);
+        let ast = AstBuilder::new(token_stream).build();
+        assert_eq!(ast, Ast::from([
+            SExp::List(vec![
+                SExp::Sym("if".to_string()),
+                SExp::List(vec![
+                    SExp::Sym("==".to_string()),
+                    SExp::I64(2),
+                    SExp::I64(1),
+                ]),
+                SExp::I64(1),
+                SExp::List(vec![
+                    SExp::Sym("*".to_string()),
+                    SExp::I64(2),
+                    SExp::I64(1),
+                ]),
+            ]),
+        ]));
+    }
 }

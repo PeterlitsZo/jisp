@@ -15,3 +15,6 @@ pub const GE: u8 = 0x2B;
 
 pub const STORE: u8 = 0x30;
 pub const LOAD: u8 = 0x31;
+
+pub const JUMP: u8 = 0x40;
+pub const JUMP_FALSE: u8 = 0x41;

@@ -54,4 +54,7 @@ test true '(>= 3 3)'
 test 25 '(let a 13) (let b 12) (+ a b)'
 test 6 '(let a (+ 4 5)) (let b (/ 21 7)) (- a b)'
 
+test 2 '(if (== 2 1) 1 (* 2 1))'
+test 20 '(let n 5) (if (== n 1) 1 (* n (- n 1)))'
+
 cleanup

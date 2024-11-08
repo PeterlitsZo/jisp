@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ast::{Ast, SExp};
+use crate::{asm::asm_statement::AsmLabel, ast::{Ast, SExp}};
 
 use super::{Asm, AsmStatement};
 
@@ -8,13 +8,16 @@ pub struct AsmBuilder {
     ast: Ast,
 
     locals_index: HashMap<String, u32>,
+    label_cnt: u32,
 }
 
 impl AsmBuilder {
     pub fn new(ast: Ast) -> Self {
         Self {
             ast,
+
             locals_index: HashMap::new(),
+            label_cnt: 1,
         }
     }
 
@@ -23,16 +26,7 @@ impl AsmBuilder {
 
         let ast = self.ast.clone();
         for s_exp in ast.s_exps() {
-            match s_exp {
-                SExp::I64(val) => {
-                    asm.push_statement(AsmStatement::PushI64 { val: *val });
-                }
-                SExp::List(lst) => {
-                    self.build_list(&mut asm, lst);
-                }
-                // TODO (@PeterlitsZo) Better error message.
-                _ => panic!("unexpected s_exp"),
-            }
+            self.build_value(&mut asm, s_exp);
         }
         asm.push_statement(AsmStatement::Ret);
         asm
@@ -43,6 +37,7 @@ impl AsmBuilder {
             Add, Sub, Mul, Div,
             Eq, Ne, Lt, Le, Gt, Ge,
             Let,
+            If,
         }
 
         let op = match &lst[0] {
@@ -57,6 +52,7 @@ impl AsmBuilder {
             SExp::Sym(sym) if sym == &">".to_string() => Op::Gt,
             SExp::Sym(sym) if sym == &">=".to_string() => Op::Ge,
             SExp::Sym(sym) if sym == &"let".to_string() => Op::Let,
+            SExp::Sym(sym) if sym == &"if".to_string() => Op::If,
             // TODO (@PeterlitsZo) Better error message.
             _ => panic!("unexpected first item")
         };
@@ -109,7 +105,26 @@ impl AsmBuilder {
                 };
                 self.build_value(asm, &lst[2]);
                 asm.push_statement(AsmStatement::Store { index });
-            }
+            },
+            Op::If => {
+                self.build_value(asm, &lst[1]);
+
+                let fpath_label = AsmLabel::new(format!(".L{}", self.label_cnt));
+                self.label_cnt += 1;
+                let end_label = AsmLabel::new(format!(".L{}", self.label_cnt));
+                self.label_cnt += 1;
+                asm.push_statement(AsmStatement::JumpFalse { label: fpath_label.clone() });
+
+                // True path.
+                self.build_value(asm, &lst[2]);
+                asm.push_statement(AsmStatement::Jump { label: end_label.clone() });
+
+                // False path.
+                asm.push_statement(AsmStatement::Label { label: fpath_label });
+                self.build_value(asm, &lst[3]);
+
+                asm.push_statement(AsmStatement::Label { label: end_label });
+            },
         }
     }
 
@@ -133,7 +148,7 @@ impl AsmBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ast::AstBuilder, token_stream::TokenStream};
+    use crate::{asm::asm_statement::AsmLabel, ast::AstBuilder, token_stream::TokenStream};
 
     use super::*;
 
@@ -201,6 +216,30 @@ mod tests {
             AsmStatement::Load { index: 0 },
             AsmStatement::Load { index: 1 },
             AsmStatement::Add,
+            AsmStatement::Ret,
+        ]));
+    }
+
+    #[test]
+    fn if_stmt() {
+        let token_stream = TokenStream::new(r###"
+            (if (== 2 1) 1 (* 2 1))
+        "###);
+        let ast = AstBuilder::new(token_stream).build();
+        let asm = AsmBuilder::new(ast).build();
+
+        assert_eq!(asm, Asm::from(0, [
+            AsmStatement::PushI64 { val: 2 },
+            AsmStatement::PushI64 { val: 1 },
+            AsmStatement::Eq,
+            AsmStatement::JumpFalse { label: AsmLabel::new(".L1") },
+            AsmStatement::PushI64 { val: 1 },
+            AsmStatement::Jump { label: AsmLabel::new(".L2") },
+            AsmStatement::Label { label: AsmLabel::new(".L1") },
+            AsmStatement::PushI64 { val: 2 },
+            AsmStatement::PushI64 { val: 1 },
+            AsmStatement::Mul,
+            AsmStatement::Label { label: AsmLabel::new(".L2") },
             AsmStatement::Ret,
         ]));
     }
