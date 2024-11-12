@@ -57,4 +57,7 @@ test 6 '(let a (+ 4 5)) (let b (/ 21 7)) (- a b)'
 test 2 '(if (== 2 1) 1 (* 2 1))'
 test 20 '(let n 5) (if (== n 1) 1 (* n (- n 1)))'
 
+test '"hello world"' '"hello world"'
+test '"hello"' '(let h "hello") (let w "world") (if (== 1 1) h w)'
+
 cleanup

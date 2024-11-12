@@ -1,6 +1,6 @@
 use std::{iter::Peekable, process::exit};
 
-use crate::token_stream::{TokenStream, TokenVal};
+use crate::token_stream::{Token, TokenStream, TokenVal};
 
 use super::{Ast, Error, ErrorMsg, SExp};
 
@@ -33,6 +33,10 @@ impl<'a> AstBuilder<'a> {
                 TokenVal::I64(val) => {
                     self.skip(TokenVal::I64(*val));
                     SExp::I64(*val)
+                }
+                TokenVal::Str(val) => {
+                    self.skip(TokenVal::Str(val.clone()));
+                    SExp::Str(val.clone())
                 }
                 TokenVal::Lparam => {
                     self.next_list()
@@ -87,6 +91,10 @@ impl<'a> AstBuilder<'a> {
                 TokenVal::I64(val) => {
                     self.skip(TokenVal::I64(*val));
                     SExp::I64(*val)
+                }
+                TokenVal::Str(val) => {
+                    self.skip(TokenVal::Str(val.clone()));
+                    SExp::Str(val.clone())
                 }
                 TokenVal::Sym(sym) => {
                     self.skip(TokenVal::Sym(sym.clone()));
@@ -155,6 +163,32 @@ mod tests {
                     SExp::I64(2),
                     SExp::I64(1),
                 ]),
+            ]),
+        ]));
+    }
+
+    #[test]
+    fn string() {
+        let token_stream = TokenStream::new(r###"
+            (let h "hello") (let w "world") (if (== 1 1) h w)
+        "###);
+        let ast = AstBuilder::new(token_stream).build();
+        assert_eq!(ast, Ast::from([
+            SExp::List(vec![
+                SExp::Sym("let".to_string()),
+                SExp::Sym("h".to_string()),
+                SExp::Str("hello".to_string()),
+            ]),
+            SExp::List(vec![
+                SExp::Sym("let".to_string()),
+                SExp::Sym("w".to_string()),
+                SExp::Str("world".to_string()),
+            ]),
+            SExp::List(vec![
+                SExp::Sym("if".to_string()),
+                SExp::List(vec![SExp::Sym("==".to_string()), SExp::I64(1), SExp::I64(1)]),
+                SExp::Sym("h".to_string()),
+                SExp::Sym("w".to_string()),
             ]),
         ]));
     }

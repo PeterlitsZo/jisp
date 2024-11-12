@@ -9,6 +9,8 @@ pub struct AsmBuilder {
 
     locals_index: HashMap<String, u32>,
     label_cnt: u32,
+    consts_index: HashMap<String, u32>,
+    consts: Vec<String>,
 }
 
 impl AsmBuilder {
@@ -18,6 +20,8 @@ impl AsmBuilder {
 
             locals_index: HashMap::new(),
             label_cnt: 1,
+            consts_index: HashMap::new(),
+            consts: vec![],
         }
     }
 
@@ -29,6 +33,7 @@ impl AsmBuilder {
             self.build_value(&mut asm, s_exp);
         }
         asm.push_statement(AsmStatement::Ret);
+        asm.consts = self.consts;
         asm
     }
 
@@ -140,6 +145,18 @@ impl AsmBuilder {
                 let index = *self.locals_index.get(name).unwrap();
                 asm.push_statement(AsmStatement::Load { index });
             }
+            SExp::Str(val) => {
+                let idx = match self.consts_index.get(val) {
+                    None => {
+                        self.consts.push(val.clone());
+                        let idx = self.consts.len() as u32 - 1;
+                        self.consts_index.insert(val.clone(), idx);
+                        idx
+                    }
+                    Some(idx) => *idx,
+                };
+                asm.push_statement(AsmStatement::PushConst { index: idx });
+            }
             // TODO (@PeterlitsZo) Better error message.
             _ => panic!("we hope the second item is INTERGER or LIST")
         }
@@ -160,7 +177,7 @@ mod tests {
         let ast = AstBuilder::new(token_stream).build();
         let asm = AsmBuilder::new(ast).build();
 
-        assert_eq!(asm, Asm::from(0, [
+        assert_eq!(asm, Asm::from(0, vec![], [
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::Ret,
         ]));
@@ -171,7 +188,7 @@ mod tests {
         let ast = AstBuilder::new(token_stream).build();
         let asm = AsmBuilder::new(ast).build();
 
-        assert_eq!(asm, Asm::from(0, [
+        assert_eq!(asm, Asm::from(0, vec![], [
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::PushI64 { val: 2 },
             AsmStatement::Add,
@@ -190,7 +207,7 @@ mod tests {
         let ast = AstBuilder::new(token_stream).build();
         let asm = AsmBuilder::new(ast).build();
 
-        assert_eq!(asm, Asm::from(0, [
+        assert_eq!(asm, Asm::from(0, vec![], [
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::PushI64 { val: 2 },
             AsmStatement::Eq,
@@ -208,7 +225,7 @@ mod tests {
         let ast = AstBuilder::new(token_stream).build();
         let asm = AsmBuilder::new(ast).build();
 
-        assert_eq!(asm, Asm::from(2, [
+        assert_eq!(asm, Asm::from(2, vec![], [
             AsmStatement::PushI64 { val: 12 },
             AsmStatement::Store { index: 0 },
             AsmStatement::PushI64 { val: 13 },
@@ -228,7 +245,7 @@ mod tests {
         let ast = AstBuilder::new(token_stream).build();
         let asm = AsmBuilder::new(ast).build();
 
-        assert_eq!(asm, Asm::from(0, [
+        assert_eq!(asm, Asm::from(0, vec![], [
             AsmStatement::PushI64 { val: 2 },
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::Eq,
@@ -240,6 +257,35 @@ mod tests {
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::Mul,
             AsmStatement::Label { label: AsmLabel::new(".L2") },
+            AsmStatement::Ret,
+        ]));
+    }
+
+    #[test]
+    fn string() {
+        let token_stream = TokenStream::new(r###"
+            (let h "hello") (let w "world") (if (== 1 1) h w)
+        "###);
+        let ast = AstBuilder::new(token_stream).build();
+        let asm = AsmBuilder::new(ast).build();
+
+        assert_eq!(asm, Asm::from(2, vec!["hello".to_string(), "world".to_string()], [
+            AsmStatement::PushConst { index: 0 },
+            AsmStatement::Store { index: 0 },
+
+            AsmStatement::PushConst { index: 1 },
+            AsmStatement::Store { index: 1 },
+
+            AsmStatement::PushI64 { val: 1 },
+            AsmStatement::PushI64 { val: 1 },
+            AsmStatement::Eq,
+            AsmStatement::JumpFalse { label: AsmLabel::new(".L1") },
+            AsmStatement::Load { index: 0 },
+            AsmStatement::Jump { label: AsmLabel::new(".L2") },
+            AsmStatement::Label { label: AsmLabel::new(".L1") },
+            AsmStatement::Load { index: 1 },
+            AsmStatement::Label { label: AsmLabel::new(".L2") },
+
             AsmStatement::Ret,
         ]));
     }

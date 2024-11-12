@@ -2,6 +2,7 @@
 #[derive(Debug, PartialEq, Eq)]
 pub struct Bytecode {
     pub locals: u32, // The number of local variables.
+    pub consts: Vec<String>, // The all consts.
     bytes: Vec<u8>,
 }
 
@@ -10,15 +11,17 @@ impl Bytecode {
     pub fn new(locals: u32) -> Self {
         Self {
             locals,
+            consts: vec![],
             bytes: vec![]
         }
     }
 
     /// Build a non-empty [Bytecode] from some bytes.
     #[cfg(test)]
-    pub fn from<T>(locals: u32, bytes: T) -> Self where T: Into<Vec<u8>> {
+    pub fn from<T>(locals: u32, consts: Vec<String>, bytes: T) -> Self where T: Into<Vec<u8>> {
         Self {
             locals,
+            consts,
             bytes: bytes.into()
         }
     }

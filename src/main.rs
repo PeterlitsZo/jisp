@@ -16,6 +16,7 @@ fn main() {
     match val {
         bytecode::RunnerResult::I64(val) => println!("{}", val),
         bytecode::RunnerResult::Bool(val) => println!("{}", val),
+        bytecode::RunnerResult::Str(val) => println!("{:?}", val),
         _ => panic!("unexpected val type"),
     }
 }

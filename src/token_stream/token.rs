@@ -22,6 +22,9 @@ pub enum TokenVal {
     /// The symbol.
     Sym(String),
 
+    /// The string.
+    Str(String),
+
     /// The integer of 64-bits.
     I64(i64),
 
@@ -50,6 +53,7 @@ impl TokenVal {
             TokenVal::Rparam => "RPARAM",
             TokenVal::I64(_) => "I64",
             TokenVal::Sym(_) => "SYM",
+            TokenVal::Str(_) => "STR",
             TokenVal::EOF => "EOF",
         }
     }

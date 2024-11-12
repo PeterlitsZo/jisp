@@ -36,7 +36,8 @@ impl BytecodeBuilder {
                 }
 
                 AS::Load { index: _ } | AS::Store { index: _ } |
-                AS::Jump { label: _ } | AS::JumpFalse { label: _ } => {
+                AS::Jump { label: _ } | AS::JumpFalse { label: _ } |
+                AS::PushConst { index: _ } => {
                     cur_offset += 1 + 4;
                 }
             }
@@ -51,6 +52,10 @@ impl BytecodeBuilder {
                     bytecode.push_byte(ins::PUSH_I64);
                     bytecode.push_bytes(&val.to_le_bytes());
                 },
+                AS::PushConst { index } => {
+                    bytecode.push_byte(ins::PUSH_CONST);
+                    bytecode.push_bytes(&index.to_le_bytes());
+                }
 
                 AS::Add => bytecode.push_byte(ins::ADD),
                 AS::Sub => bytecode.push_byte(ins::SUB),
@@ -84,6 +89,8 @@ impl BytecodeBuilder {
                 },
             }
         }
+        
+        bytecode.consts = self.asm.consts;
         bytecode
     }
 }
@@ -96,18 +103,18 @@ mod tests {
 
     #[test]
     fn basic() {
-        let asm = Asm::from(0, [
+        let asm = Asm::from(0, vec![], [
             AsmStatement::PushI64 { val: 0xff },
             AsmStatement::Ret,
         ]);
         let bytecode_builder = BytecodeBuilder::new(asm);
         let bytecode = bytecode_builder.build();
-        assert_eq!(bytecode, Bytecode::from(0, [
+        assert_eq!(bytecode, Bytecode::from(0, vec![], [
             ins::PUSH_I64, 0xff, 0, 0, 0, 0, 0, 0, 0,
             ins::RET,
         ]));
 
-        let asm = Asm::from(0, [
+        let asm = Asm::from(0, vec![], [
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::PushI64 { val: 2 },
             AsmStatement::Add,
@@ -115,7 +122,7 @@ mod tests {
         ]);
         let bytecode_builder = BytecodeBuilder::new(asm);
         let bytecode = bytecode_builder.build();
-        assert_eq!(bytecode, Bytecode::from(0, [
+        assert_eq!(bytecode, Bytecode::from(0, vec![], [
             ins::PUSH_I64, 0x01, 0, 0, 0, 0, 0, 0, 0,
             ins::PUSH_I64, 0x02, 0, 0, 0, 0, 0, 0, 0,
             ins::ADD,
@@ -125,7 +132,7 @@ mod tests {
 
     #[test]
     fn label_jump() {
-        let asm = Asm::from(0, [
+        let asm = Asm::from(0, vec![], [
             AsmStatement::PushI64 { val: 2 },
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::Eq,
@@ -141,7 +148,7 @@ mod tests {
         ]);
         let bytecode_builder = BytecodeBuilder::new(asm);
         let bytecode = bytecode_builder.build();
-        assert_eq!(bytecode, Bytecode::from(0, [
+        assert_eq!(bytecode, Bytecode::from(0, vec![], [
             /* off: 0x00 = 00 */ ins::PUSH_I64, 0x02, 0, 0, 0, 0, 0, 0, 0,
             /* off: 0x09 = 09 */ ins::PUSH_I64, 0x01, 0, 0, 0, 0, 0, 0, 0,
             /* off: 0x12 = 18 */ ins::EQ,
@@ -152,6 +159,20 @@ mod tests {
             /* off: 0x2f = 47 */ ins::PUSH_I64, 0x01, 0, 0, 0, 0, 0, 0, 0,
             /* off: 0x38 = 56 */ ins::MUL,
             /* off: 0x39 = 57 */ ins::RET,
+        ]));
+    }
+
+    #[test]
+    fn string() {
+        let asm = Asm::from(0, vec!["hello".to_string()], [
+            AsmStatement::PushConst { index: 0 },
+            AsmStatement::Ret,
+        ]);
+        let bytecode_builder = BytecodeBuilder::new(asm);
+        let bytecode = bytecode_builder.build();
+        assert_eq!(bytecode, Bytecode::from(0, vec!["hello".to_string()], [
+            /* off: 0x00 = 00 */ ins::PUSH_CONST, 0x00, 0, 0, 0,
+            /* off: 0x05 = 05 */ ins::RET,
         ]));
     }
 }

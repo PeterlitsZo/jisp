@@ -5,6 +5,7 @@ pub enum AsmStatement {
     Ret,
 
     PushI64 { val: i64 },
+    PushConst { index: u32 },
 
     Add,
     Sub,

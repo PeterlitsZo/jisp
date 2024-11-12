@@ -4,6 +4,7 @@ use super::AsmStatement;
 #[derive(Debug, PartialEq, Eq)]
 pub struct Asm {
     pub locals: u32, // The number of local variables.
+    pub consts: Vec<String>, // The consts.
     statements: Vec<AsmStatement>,
 }
 
@@ -12,15 +13,17 @@ impl Asm {
     pub fn new(locals: u32) -> Self {
         Self {
             locals,
+            consts: Vec::new(),
             statements: Vec::new()
         }
     }
 
     /// Build a non-emtpy [Asm] from statements.
     #[cfg(test)]
-    pub fn from<T>(locals: u32, statements: T) -> Self where T: Into<Vec<AsmStatement>> {
+    pub fn from<T>(locals: u32, consts: Vec<String>, statements: T) -> Self where T: Into<Vec<AsmStatement>> {
         Self {
             locals,
+            consts,
             statements: statements.into()
         }
     }

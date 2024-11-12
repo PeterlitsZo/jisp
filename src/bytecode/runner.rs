@@ -36,6 +36,12 @@ impl Runner {
                     self.stack.push_i64(val);
                     self.pc += 9;
                 },
+                ins::PUSH_CONST => {
+                    let index = &bytes[self.pc+1..self.pc+5];
+                    let index = u32::from_le_bytes(index.try_into().unwrap());
+                    self.stack.push(Value::Str(self.bytecode.consts[index as usize].clone()));
+                    self.pc += 5;
+                }
 
                 ins::ADD => {
                     let second = self.stack.pop_i64();
@@ -199,6 +205,7 @@ pub enum Value {
     Undefined,
     I64(i64),
     Bool(bool),
+    Str(String),
 }
 
 #[cfg(test)]
@@ -209,14 +216,14 @@ mod tests {
 
     #[test]
     fn calc() {
-        let bytecode = BytecodeBuilder::new(Asm::from(0, [
+        let bytecode = BytecodeBuilder::new(Asm::from(0, vec![], [
             AsmStatement::PushI64 { val: 0xff },
             AsmStatement::Ret,
         ])).build();
         let result = Runner::new(bytecode).run();
         assert_eq!(result, Value::I64(0xff));
 
-        let bytecode = BytecodeBuilder::new(Asm::from(0, [
+        let bytecode = BytecodeBuilder::new(Asm::from(0, vec![], [
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::PushI64 { val: 2 },
             AsmStatement::Add,
@@ -227,7 +234,7 @@ mod tests {
         let result = Runner::new(bytecode).run();
         assert_eq!(result, Value::I64(6));
 
-        let bytecode = BytecodeBuilder::new(Asm::from(0, [
+        let bytecode = BytecodeBuilder::new(Asm::from(0, vec![], [
             AsmStatement::PushI64 { val: 6 },
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::Sub,
@@ -241,7 +248,7 @@ mod tests {
 
     #[test]
     fn compare() {
-        let bytecode = BytecodeBuilder::new(Asm::from(0, [
+        let bytecode = BytecodeBuilder::new(Asm::from(0, vec![], [
             AsmStatement::PushI64 { val: 6 },
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::Eq,
@@ -250,7 +257,7 @@ mod tests {
         let result = Runner::new(bytecode).run();
         assert_eq!(result, Value::Bool(false));
 
-        let bytecode = BytecodeBuilder::new(Asm::from(0, [
+        let bytecode = BytecodeBuilder::new(Asm::from(0, vec![], [
             AsmStatement::PushI64 { val: 255 },
             AsmStatement::PushI64 { val: 255 },
             AsmStatement::Eq,
@@ -259,7 +266,7 @@ mod tests {
         let result = Runner::new(bytecode).run();
         assert_eq!(result, Value::Bool(true));
 
-        let bytecode = BytecodeBuilder::new(Asm::from(0, [
+        let bytecode = BytecodeBuilder::new(Asm::from(0, vec![], [
             AsmStatement::PushI64 { val: 255 },
             AsmStatement::PushI64 { val: 255 },
             AsmStatement::Ne,
@@ -271,7 +278,7 @@ mod tests {
 
     #[test]
     fn locals() {
-        let bytecode = BytecodeBuilder::new(Asm::from(2, [
+        let bytecode = BytecodeBuilder::new(Asm::from(2, vec![], [
             AsmStatement::PushI64 { val: 13 },
             AsmStatement::Store { index: 0 },
             AsmStatement::PushI64 { val: 12 },
@@ -287,7 +294,7 @@ mod tests {
 
     #[test]
     fn label_jump() {
-        let bytecode = BytecodeBuilder::new(Asm::from(0, [
+        let bytecode = BytecodeBuilder::new(Asm::from(0, vec![], [
             AsmStatement::PushI64 { val: 2 },
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::Eq,

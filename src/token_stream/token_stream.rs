@@ -60,6 +60,47 @@ impl<'a> TokenStream<'a> {
         Some(tok)
     }
 
+    // TODO Need a error.
+    fn next_str(&mut self) -> Result<Token, ()> {
+        let mut str = String::new();
+        let mut next_pos = self.pos;
+
+        // Skip the quote character.
+        next_pos.offset += 1;
+        let first_ch = self.source.next();
+        if first_ch != Some('"') {
+            return Err(());
+        }
+
+        loop {
+            let peek_char = self.source.peek();
+            let peek_char = match peek_char {
+                None => return Err(()),
+                Some(c) => *c,
+            };
+            match peek_char {
+                '"' => break,
+                ch => {
+                    self.skip_char();
+                    next_pos.offset += 1;
+                    str.push(ch);
+                }
+            }
+        }
+
+        // Skip the quote character.
+        next_pos.offset += 1;
+        let last_ch = self.source.next();
+        if last_ch != Some('"') {
+            return Err(());
+        }
+
+        let tok = Token::new(self.pos, TokenVal::Str(str));
+        self.pos = next_pos;
+        self.eof_pos = self.pos;
+        Ok(tok)
+    }
+
     fn next_sym(&mut self) -> Option<Token> {
         let mut sym = String::new();
         let mut next_pos = self.pos;
@@ -129,7 +170,8 @@ impl<'a> Iterator for TokenStream<'a> {
                     self.pos.offset += 1;
                     self.eof_pos = self.pos;
                     Some(token)
-                }
+                },
+                '"' => self.next_str().ok(),
                 '0'..='9' => self.next_num(),
                 _ => self.next_sym(),
             };
@@ -158,6 +200,36 @@ mod tests {
             Token::new(TokenPos{ lineno: 1, offset: 6 }, TokenVal::I64(2)),
             Token::new(TokenPos{ lineno: 1, offset: 7 }, TokenVal::Rparam),
             Token::new(TokenPos{ lineno: 1, offset: 8 }, TokenVal::EOF),
+        ]);
+
+        let token_stream = TokenStream::new(
+            "(let h \"hello\") (let w \"world\") (if (== 1 1) h w)\n"
+        );
+        assert_eq!(token_stream.collect::<Vec<Token>>(), vec![
+            Token::new(TokenPos{ lineno: 1, offset: 1 }, TokenVal::Lparam),
+            Token::new(TokenPos{ lineno: 1, offset: 2 }, TokenVal::Sym("let".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 6 }, TokenVal::Sym("h".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 8 }, TokenVal::Str("hello".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 15 }, TokenVal::Rparam),
+
+            Token::new(TokenPos{ lineno: 1, offset: 17 }, TokenVal::Lparam),
+            Token::new(TokenPos{ lineno: 1, offset: 18 }, TokenVal::Sym("let".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 22 }, TokenVal::Sym("w".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 24 }, TokenVal::Str("world".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 31 }, TokenVal::Rparam),
+
+            Token::new(TokenPos{ lineno: 1, offset: 33 }, TokenVal::Lparam),
+            Token::new(TokenPos{ lineno: 1, offset: 34 }, TokenVal::Sym("if".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 37 }, TokenVal::Lparam),
+            Token::new(TokenPos{ lineno: 1, offset: 38 }, TokenVal::Sym("==".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 41 }, TokenVal::I64(1)),
+            Token::new(TokenPos{ lineno: 1, offset: 43 }, TokenVal::I64(1)),
+            Token::new(TokenPos{ lineno: 1, offset: 44 }, TokenVal::Rparam),
+            Token::new(TokenPos{ lineno: 1, offset: 46 }, TokenVal::Sym("h".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 48 }, TokenVal::Sym("w".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 49 }, TokenVal::Rparam),
+
+            Token::new(TokenPos{ lineno: 1, offset: 50 }, TokenVal::EOF),
         ]);
     }
 }
