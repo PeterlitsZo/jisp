@@ -28,7 +28,6 @@ pub struct RunnerFrame<'r> {
     runner: &'r Runner,
 
     func: &'r BytecodeFn, // The function running.
-    args: Vec<Value>, // The args passed to the frame.
     pc: usize, // The program counter.
     stack: RunnerStack, // The stack.
     locals: RunnerLocals, // The local variables.
@@ -38,14 +37,18 @@ impl<'r> RunnerFrame<'r> {
     /// Build a [Runner].
     pub fn new(runner: &'r Runner, index: usize, args: Vec<Value>) -> Self {
         let func = &runner.bytecode.fns[index];
+        let mut locals = RunnerLocals::new(func.locals as usize);
+        for (i, val) in args.iter().enumerate() {
+            locals.set(i, val.clone());
+        }
+
         Self {
             runner,
 
             func,
-            args,
             pc: 0,
             stack: RunnerStack::new(),
-            locals: RunnerLocals::new(func.locals as usize),
+            locals,
         }
     }
 
@@ -390,5 +393,58 @@ mod tests {
         let bytecode = BytecodeBuilder::new(asm).build();
         let result = Runner::new(bytecode).run();
         assert_eq!(result, Value::I64(5));
+
+        let mut asm = Asm::new();
+        asm.consts = vec![
+            Value::Fn(1),
+        ];
+        asm.push_fn(AsmFn::new(0, vec![
+            AsmStatement::PushConst { index: 0 },
+            AsmStatement::PushI64 { val: 3 },
+            AsmStatement::PushI64 { val: 5 },
+            AsmStatement::Call { args: 2 },
+            AsmStatement::Ret,
+        ]));
+        asm.push_fn(AsmFn::new(2, vec![
+            AsmStatement::Load { index: 0 },
+            AsmStatement::Load { index: 1 },
+            AsmStatement::Add,
+            AsmStatement::Ret,
+        ]));
+        let bytecode = BytecodeBuilder::new(asm).build();
+        let result = Runner::new(bytecode).run();
+        assert_eq!(result, Value::I64(8));
+
+        let mut asm = Asm::new();
+        asm.consts = vec![
+            Value::Fn(1),
+        ];
+        asm.push_fn(AsmFn::new(0, vec![
+            AsmStatement::PushConst { index: 0 },
+            AsmStatement::PushI64 { val: 5 },
+            AsmStatement::Call { args: 1 },
+            AsmStatement::Ret,
+        ]));
+        asm.push_fn(AsmFn::new(1, vec![
+            AsmStatement::Load { index: 0 },
+            AsmStatement::PushI64 { val: 0 },
+            AsmStatement::Eq,
+            AsmStatement::JumpFalse { label: AsmLabel::new(".L1") },
+            AsmStatement::PushI64 { val: 1 },
+            AsmStatement::Jump { label: AsmLabel::new(".L2") },
+            AsmStatement::Label { label: AsmLabel::new(".L1") },
+            AsmStatement::PushConst { index: 0 },
+            AsmStatement::Load { index: 0 },
+            AsmStatement::PushI64 { val: 1 },
+            AsmStatement::Sub,
+            AsmStatement::Call { args: 1 },
+            AsmStatement::Load { index: 0 },
+            AsmStatement::Mul,
+            AsmStatement::Label { label: AsmLabel::new(".L2") },
+            AsmStatement::Ret,
+        ]));
+        let bytecode = BytecodeBuilder::new(asm).build();
+        let result = Runner::new(bytecode).run();
+        assert_eq!(result, Value::I64(120));
     }
 }

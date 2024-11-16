@@ -1,6 +1,6 @@
 use std::{iter::Peekable, process::exit};
 
-use crate::token_stream::{Token, TokenStream, TokenVal};
+use crate::token_stream::{TokenStream, TokenVal};
 
 use super::{Ast, Error, ErrorMsg, SExp};
 
@@ -23,33 +23,11 @@ impl<'a> AstBuilder<'a> {
     pub fn build(mut self) -> Ast {
         let mut ast = Ast::new();
         loop {
-            let token = self.token_stream.peek();
-            let token = match token {
-                Some(t) if t.val() == &TokenVal::EOF => break,
-                Some(t) => t.clone(),
-                None => panic!("should not peek None"),
+            match self.token_stream.peek() {
+                Some(tok) if tok.val() == &TokenVal::EOF => break,
+                _ => (),
             };
-            let s_exp = match token.val() {
-                TokenVal::I64(val) => {
-                    self.skip(TokenVal::I64(*val));
-                    SExp::I64(*val)
-                }
-                TokenVal::Str(val) => {
-                    self.skip(TokenVal::Str(val.clone()));
-                    SExp::Str(val.clone())
-                }
-                TokenVal::Lparam => {
-                    self.next_list()
-                }
-                _ => {
-                    let err = Error::new(
-                        &self.source_plain, token.pos(),
-                        ErrorMsg::Unexpected { want: "I64 or LPARAM" }
-                    );
-                    err.print();
-                    exit(1);
-                },
-            };
+            let s_exp = self.next_value();
             ast.push_s_exp(s_exp);
         }
         ast
@@ -72,52 +50,70 @@ impl<'a> AstBuilder<'a> {
         let mut result = vec![];
         self.skip(TokenVal::Lparam);
         loop {
-            let peek_token = self.token_stream.peek();
-            let peek_token = match peek_token {
+            match self.token_stream.peek() {
                 Some(tok) if tok.val() == &TokenVal::Rparam => break,
-                Some(tok) if tok.val() == &TokenVal::EOF => {
-                    let err = Error::new(
-                        &self.source_plain, tok.pos(),
-                        ErrorMsg::Unexpected { want: "RPARAM, I64 or LPARAM" }
-                    );
-                    err.print();
-                    exit(1);
-                },
-                Some(tok) => tok.clone(),
-                None => panic!("should not peek None")
+                _ => (),
             };
-            let s_exp = match peek_token.val() {
-                TokenVal::Lparam => self.next_list(),
-                TokenVal::I64(val) => {
-                    self.skip(TokenVal::I64(*val));
-                    SExp::I64(*val)
-                }
-                TokenVal::Str(val) => {
-                    self.skip(TokenVal::Str(val.clone()));
-                    SExp::Str(val.clone())
-                }
-                TokenVal::Sym(sym) => {
-                    self.skip(TokenVal::Sym(sym.clone()));
-                    SExp::Sym(sym.clone())
-                }
-                TokenVal::Lsquare => {
-                    self.skip(TokenVal::Lsquare);
-                    self.skip(TokenVal::Rsquare);
-                    SExp::Array
-                }
-                _ => {
-                    let err = Error::new(
-                        &self.source_plain, peek_token.pos(),
-                        ErrorMsg::Unexpected { want: "LPARAM, I64 or SYM" }
-                    );
-                    err.print();
-                    exit(1);
-                }
-            };
+            let s_exp = self.next_value();
             result.push(s_exp);
         }
         self.skip(TokenVal::Rparam);
         SExp::List(result)
+    }
+
+    fn next_arr(&mut self) -> SExp {
+        let mut result = vec![];
+        self.skip(TokenVal::Lsquare);
+        loop {
+            match self.token_stream.peek() {
+                Some(tok) if tok.val() == &TokenVal::Rsquare => break,
+                _ => (),
+            };
+            let s_exp = self.next_value();
+            result.push(s_exp);
+        }
+        self.skip(TokenVal::Rsquare);
+        SExp::Array(result)
+    }
+
+    fn next_value(&mut self) -> SExp {
+        let peek_token = self.token_stream.peek();
+        let peek_token = match peek_token {
+            Some(tok) if tok.val() == &TokenVal::EOF => {
+                let err = Error::new(
+                    &self.source_plain, tok.pos(),
+                    ErrorMsg::Unexpected { want: "RPARAM, I64 or LPARAM" }
+                );
+                err.print();
+                exit(1);
+            },
+            Some(tok) => tok.clone(),
+            None => panic!("should not peek None")
+        };
+        match peek_token.val() {
+            TokenVal::Lparam => self.next_list(),
+            TokenVal::Lsquare => self.next_arr(),
+            TokenVal::I64(val) => {
+                self.skip(TokenVal::I64(*val));
+                SExp::I64(*val)
+            }
+            TokenVal::Str(val) => {
+                self.skip(TokenVal::Str(val.clone()));
+                SExp::Str(val.clone())
+            }
+            TokenVal::Sym(sym) => {
+                self.skip(TokenVal::Sym(sym.clone()));
+                SExp::Sym(sym.clone())
+            }
+            _ => {
+                let err = Error::new(
+                    &self.source_plain, peek_token.pos(),
+                    ErrorMsg::Unexpected { want: "LPARAM, I64 or SYM" }
+                );
+                err.print();
+                exit(1);
+            }
+        }
     }
 }
 
@@ -209,11 +205,34 @@ mod tests {
             SExp::List(vec![
                 SExp::Sym("fn".to_string()),
                 SExp::Sym("ret5".to_string()),
-                SExp::Array,
+                SExp::Array(vec![]),
                 SExp::I64(5),
             ]),
             SExp::List(vec![
                 SExp::Sym("ret5".to_string()),
+            ]),
+        ]));
+
+        let token_stream = TokenStream::new(r###"
+            (fn add [x y] (+ x y))
+            (add 3 5)
+        "###);
+        let ast = AstBuilder::new(token_stream).build();
+        assert_eq!(ast, Ast::from([
+            SExp::List(vec![
+                SExp::Sym("fn".to_string()),
+                SExp::Sym("add".to_string()),
+                SExp::Array(vec![SExp::Sym("x".to_string()), SExp::Sym("y".to_string())]),
+                SExp::List(vec![
+                    SExp::Sym("+".to_string()),
+                    SExp::Sym("x".to_string()),
+                    SExp::Sym("y".to_string()),
+                ]),
+            ]),
+            SExp::List(vec![
+                SExp::Sym("add".to_string()),
+                SExp::I64(3),
+                SExp::I64(5),
             ]),
         ]));
     }

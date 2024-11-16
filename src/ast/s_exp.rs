@@ -5,5 +5,5 @@ pub enum SExp {
     Sym(String),
     Str(String),
     List(Vec<SExp>),
-    Array,
+    Array(Vec<SExp>),
 }

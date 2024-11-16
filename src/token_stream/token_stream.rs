@@ -111,7 +111,7 @@ impl<'a> TokenStream<'a> {
                 Some(c) => *c,
             };
             match peek_char {
-                ')' | ' ' | '\t' | '\n' => break,
+                ')' | ']' | ' ' | '\t' | '\n' => break,
                 ch => {
                     self.skip_char();
                     next_pos.offset += 1;
@@ -254,6 +254,27 @@ mod tests {
             Token::new(TokenPos{ lineno: 1, offset: 21 }, TokenVal::Rparam),
 
             Token::new(TokenPos{ lineno: 1, offset: 22 }, TokenVal::EOF),
+        ]);
+
+        let token_stream = TokenStream::new(
+            "(fn add [x y] (+ x y))"
+        );
+        assert_eq!(token_stream.collect::<Vec<Token>>(), vec![
+            Token::new(TokenPos{ lineno: 1, offset: 1 }, TokenVal::Lparam),
+            Token::new(TokenPos{ lineno: 1, offset: 2 }, TokenVal::Sym("fn".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 5 }, TokenVal::Sym("add".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 9 }, TokenVal::Lsquare),
+            Token::new(TokenPos{ lineno: 1, offset: 10 }, TokenVal::Sym("x".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 12 }, TokenVal::Sym("y".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 13 }, TokenVal::Rsquare),
+            Token::new(TokenPos{ lineno: 1, offset: 15 }, TokenVal::Lparam),
+            Token::new(TokenPos{ lineno: 1, offset: 16 }, TokenVal::Sym("+".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 18 }, TokenVal::Sym("x".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 20 }, TokenVal::Sym("y".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 21 }, TokenVal::Rparam),
+            Token::new(TokenPos{ lineno: 1, offset: 22 }, TokenVal::Rparam),
+
+            Token::new(TokenPos{ lineno: 1, offset: 23 }, TokenVal::EOF),
         ]);
     }
 }
