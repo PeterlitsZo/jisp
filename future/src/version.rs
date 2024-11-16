@@ -1,0 +1,1 @@
+pub(super) static VERSION: &'static str = "0.1.0-dev";
