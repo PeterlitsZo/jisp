@@ -100,6 +100,11 @@ impl<'a> AstBuilder<'a> {
                     self.skip(TokenVal::Sym(sym.clone()));
                     SExp::Sym(sym.clone())
                 }
+                TokenVal::Lsquare => {
+                    self.skip(TokenVal::Lsquare);
+                    self.skip(TokenVal::Rsquare);
+                    SExp::Array
+                }
                 _ => {
                     let err = Error::new(
                         &self.source_plain, peek_token.pos(),
@@ -189,6 +194,26 @@ mod tests {
                 SExp::List(vec![SExp::Sym("==".to_string()), SExp::I64(1), SExp::I64(1)]),
                 SExp::Sym("h".to_string()),
                 SExp::Sym("w".to_string()),
+            ]),
+        ]));
+    }
+
+    #[test]
+    fn functions() {
+        let token_stream = TokenStream::new(r###"
+            (fn ret5 [] 5)
+            (ret5)
+        "###);
+        let ast = AstBuilder::new(token_stream).build();
+        assert_eq!(ast, Ast::from([
+            SExp::List(vec![
+                SExp::Sym("fn".to_string()),
+                SExp::Sym("ret5".to_string()),
+                SExp::Array,
+                SExp::I64(5),
+            ]),
+            SExp::List(vec![
+                SExp::Sym("ret5".to_string()),
             ]),
         ]));
     }

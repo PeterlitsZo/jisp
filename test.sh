@@ -2,6 +2,9 @@
 
 startup() {
     cargo test
+    if [[ $? -ne 0 ]]; then
+        exit 1
+    fi
     cargo build
 }
 
@@ -59,5 +62,7 @@ test 20 '(let n 5) (if (== n 1) 1 (* n (- n 1)))'
 
 test '"hello world"' '"hello world"'
 test '"hello"' '(let h "hello") (let w "world") (if (== 1 1) h w)'
+
+test 5 '(fn ret5 [] 5) (ret5)'
 
 cleanup

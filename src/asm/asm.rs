@@ -1,40 +1,43 @@
+use crate::value::Value;
+
 use super::AsmStatement;
 
 /// The ASM.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Asm {
-    pub locals: u32, // The number of local variables.
-    pub consts: Vec<String>, // The consts.
-    statements: Vec<AsmStatement>,
+    pub consts: Vec<Value>, // The consts.
+    pub fns: Vec<AsmFn>, // The functions.
 }
 
 impl Asm {
-    /// Build a emtpy [Asm].
-    pub fn new(locals: u32) -> Self {
+    /// Build an emtpy [Asm].
+    pub fn new() -> Self {
         Self {
-            locals,
             consts: Vec::new(),
-            statements: Vec::new()
+            fns: Vec::new(),
         }
     }
 
-    /// Build a non-emtpy [Asm] from statements.
-    #[cfg(test)]
-    pub fn from<T>(locals: u32, consts: Vec<String>, statements: T) -> Self where T: Into<Vec<AsmStatement>> {
-        Self {
-            locals,
-            consts,
-            statements: statements.into()
-        }
+    /// Push a [AsmFn].
+    pub fn push_fn(&mut self, f: AsmFn) {
+        self.fns.push(f);
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct AsmFn {
+    pub locals: u32, // The number of local variables.
+    pub statements: Vec<AsmStatement>,
+}
+
+impl AsmFn {
+    /// Build an empty [AsmFn].
+    pub fn new(locals: u32, statements: Vec<AsmStatement>) -> Self {
+        Self { locals, statements }
     }
 
-    /// Push a statement to the [Asm].
+    /// Push a statements.
     pub fn push_statement(&mut self, statement: AsmStatement) {
         self.statements.push(statement);
-    }
-
-    /// Read the [AsmStatement] one by one.
-    pub fn statements(&self) -> impl Iterator<Item = &AsmStatement> {
-        self.statements.iter()
     }
 }

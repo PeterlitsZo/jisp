@@ -1,29 +1,37 @@
+use crate::value::Value;
+
 /// The bytecode.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Bytecode {
-    pub locals: u32, // The number of local variables.
-    pub consts: Vec<String>, // The all consts.
-    bytes: Vec<u8>,
+    pub consts: Vec<Value>, // The all consts.
+    pub fns: Vec<BytecodeFn>, // The functions.
 }
 
 impl Bytecode {
     /// Build a empty [Bytecode].
-    pub fn new(locals: u32) -> Self {
+    pub fn new() -> Self {
         Self {
-            locals,
             consts: vec![],
-            bytes: vec![]
+            fns: vec![],
         }
     }
+}
 
-    /// Build a non-empty [Bytecode] from some bytes.
-    #[cfg(test)]
-    pub fn from<T>(locals: u32, consts: Vec<String>, bytes: T) -> Self where T: Into<Vec<u8>> {
-        Self {
-            locals,
-            consts,
-            bytes: bytes.into()
-        }
+#[derive(Debug, PartialEq, Eq)]
+pub struct BytecodeFn {
+    pub locals: u32, // The number of local variables.
+    bytes: Vec<u8>,
+}
+
+impl BytecodeFn {
+    /// Build a empty [BytecodeFn].
+    pub fn new() -> Self {
+        Self { locals: 0, bytes: vec![] }
+    }
+
+    /// Build a [BytecodeFn].
+    pub fn from<T: Into<Vec<u8>>>(locals: u32, bytes: T) -> Self {
+        Self { locals, bytes: bytes.into() }
     }
 
     /// Push one byte to [Bytecode].

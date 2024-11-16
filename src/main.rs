@@ -2,6 +2,7 @@ use std::{env, fs};
 
 mod token_stream;
 mod ast;
+mod value;
 mod asm;
 mod bytecode;
 
@@ -14,9 +15,9 @@ fn main() {
     let bytecode = bytecode::BytecodeBuilder::new(asm).build();
     let val = bytecode::Runner::new(bytecode).run();
     match val {
-        bytecode::RunnerResult::I64(val) => println!("{}", val),
-        bytecode::RunnerResult::Bool(val) => println!("{}", val),
-        bytecode::RunnerResult::Str(val) => println!("{:?}", val),
+        value::Value::I64(val) => println!("{}", val),
+        value::Value::Bool(val) => println!("{}", val),
+        value::Value::Str(val) => println!("{:?}", val),
         _ => panic!("unexpected val type"),
     }
 }

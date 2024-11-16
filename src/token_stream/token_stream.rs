@@ -160,11 +160,13 @@ impl<'a> Iterator for TokenStream<'a> {
                     }
                     continue;
                 },
-                token @ ( '(' | ')' ) => {
+                token @ ( '(' | ')' | '[' | ']' ) => {
                     self.skip_char();
                     let token = match token {
                         '(' => Token::new(self.pos, TokenVal::Lparam),
                         ')' => Token::new(self.pos, TokenVal::Rparam),
+                        '[' => Token::new(self.pos, TokenVal::Lsquare),
+                        ']' => Token::new(self.pos, TokenVal::Rsquare),
                         _ => panic!("uncovered token"),
                     };
                     self.pos.offset += 1;
@@ -230,6 +232,28 @@ mod tests {
             Token::new(TokenPos{ lineno: 1, offset: 49 }, TokenVal::Rparam),
 
             Token::new(TokenPos{ lineno: 1, offset: 50 }, TokenVal::EOF),
+        ]);
+    }
+
+    #[test]
+    fn functions() {
+        let token_stream = TokenStream::new(
+            "(fn ret5 [] 5) (ret5)"
+        );
+        assert_eq!(token_stream.collect::<Vec<Token>>(), vec![
+            Token::new(TokenPos{ lineno: 1, offset: 1 }, TokenVal::Lparam),
+            Token::new(TokenPos{ lineno: 1, offset: 2 }, TokenVal::Sym("fn".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 5 }, TokenVal::Sym("ret5".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 10 }, TokenVal::Lsquare),
+            Token::new(TokenPos{ lineno: 1, offset: 11 }, TokenVal::Rsquare),
+            Token::new(TokenPos{ lineno: 1, offset: 13 }, TokenVal::I64(5)),
+            Token::new(TokenPos{ lineno: 1, offset: 14 }, TokenVal::Rparam),
+
+            Token::new(TokenPos{ lineno: 1, offset: 16 }, TokenVal::Lparam),
+            Token::new(TokenPos{ lineno: 1, offset: 17 }, TokenVal::Sym("ret5".to_string())),
+            Token::new(TokenPos{ lineno: 1, offset: 21 }, TokenVal::Rparam),
+
+            Token::new(TokenPos{ lineno: 1, offset: 22 }, TokenVal::EOF),
         ]);
     }
 }

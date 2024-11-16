@@ -19,3 +19,5 @@ pub const LOAD: u8 = 0x31;
 
 pub const JUMP: u8 = 0x40;
 pub const JUMP_FALSE: u8 = 0x41;
+
+pub const CALL: u8 = 0x50;

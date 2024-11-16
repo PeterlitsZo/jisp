@@ -23,6 +23,8 @@ pub enum AsmStatement {
 
     Jump { label: AsmLabel }, // Jump to the label.
     JumpFalse { label: AsmLabel }, // Jump to the label if false.
+
+    Call { args: u32 },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]

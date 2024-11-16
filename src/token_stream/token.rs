@@ -18,6 +18,12 @@ pub enum TokenVal {
 
     /// The ')'.
     Rparam,
+
+    /// The '['.
+    Lsquare,
+
+    /// The ']'.
+    Rsquare,
     
     /// The symbol.
     Sym(String),
@@ -51,6 +57,8 @@ impl TokenVal {
         match self {
             TokenVal::Lparam => "LPARAM",
             TokenVal::Rparam => "RPARAM",
+            TokenVal::Lsquare => "LSQUARE",
+            TokenVal::Rsquare => "RSQUARE",
             TokenVal::I64(_) => "I64",
             TokenVal::Sym(_) => "SYM",
             TokenVal::Str(_) => "STR",

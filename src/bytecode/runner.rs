@@ -1,27 +1,57 @@
-use super::{ins, Bytecode};
+use crate::value::Value;
+
+use super::{bytecode::BytecodeFn, ins, Bytecode};
 
 /// The [Bytecode] runner.
 pub struct Runner {
-    pc: usize, // The program counter.
-    stack: RunnerStack, // The stack.
-    locals: RunnerLocals, // The local variables.
     bytecode: Bytecode,
 }
 
 impl Runner {
     /// Build a [Runner].
     pub fn new(bytecode: Bytecode) -> Self {
+        Self { bytecode }
+    }
+
+    /// Run the bytecode as eval those code.
+    pub fn run(self) -> Value {
+        self.run_frame(0, vec![])
+    }
+
+    fn run_frame(&self, index: usize, args: Vec<Value>) -> Value {
+        let frame = RunnerFrame::new(&self, index, args);
+        frame.run()
+    }
+}
+
+pub struct RunnerFrame<'r> {
+    runner: &'r Runner,
+
+    func: &'r BytecodeFn, // The function running.
+    args: Vec<Value>, // The args passed to the frame.
+    pc: usize, // The program counter.
+    stack: RunnerStack, // The stack.
+    locals: RunnerLocals, // The local variables.
+}
+
+impl<'r> RunnerFrame<'r> {
+    /// Build a [Runner].
+    pub fn new(runner: &'r Runner, index: usize, args: Vec<Value>) -> Self {
+        let func = &runner.bytecode.fns[index];
         Self {
+            runner,
+
+            func,
+            args,
             pc: 0,
             stack: RunnerStack::new(),
-            locals: RunnerLocals::new(bytecode.locals as usize),
-            bytecode
+            locals: RunnerLocals::new(func.locals as usize),
         }
     }
 
     /// Run the bytecode as eval those code.
     pub fn run(mut self) -> Value {
-        let bytes = self.bytecode.bytes();
+        let bytes = self.func.bytes();
         loop {
             let byte = bytes[self.pc];
             match byte {
@@ -39,7 +69,7 @@ impl Runner {
                 ins::PUSH_CONST => {
                     let index = &bytes[self.pc+1..self.pc+5];
                     let index = u32::from_le_bytes(index.try_into().unwrap());
-                    self.stack.push(Value::Str(self.bytecode.consts[index as usize].clone()));
+                    self.stack.push(self.runner.bytecode.consts[index as usize].clone());
                     self.pc += 5;
                 }
 
@@ -133,6 +163,28 @@ impl Runner {
                     }
                 }
 
+                ins::CALL => {
+                    let args = &bytes[self.pc+1..self.pc+5];
+                    let args = u32::from_le_bytes(args.try_into().unwrap());
+
+                    let mut arg_values = vec![];
+                    for _ in 0..args {
+                        arg_values.push(self.stack.pop());
+                    }
+                    arg_values.reverse();
+
+                    let func = self.stack.pop();
+                    let res = match func {
+                        Value::Fn(index) => {
+                            self.runner.run_frame(index as usize, arg_values)
+                        }
+                        _ => panic!("runtime error"),
+                    };
+                    self.stack.push(res);
+
+                    self.pc += 5;
+                }
+
                 _ => panic!("unexpected byte"),
             }
         }
@@ -200,85 +252,90 @@ impl RunnerLocals {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Value {
-    Undefined,
-    I64(i64),
-    Bool(bool),
-    Str(String),
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::{asm::{Asm, AsmLabel, AsmStatement}, bytecode::{self, bytecode_builder::BytecodeBuilder}};
+    use crate::{asm::{Asm, AsmFn, AsmLabel, AsmStatement}, bytecode::{self, bytecode_builder::BytecodeBuilder}};
 
     use super::*;
 
     #[test]
     fn calc() {
-        let bytecode = BytecodeBuilder::new(Asm::from(0, vec![], [
+        let mut asm = Asm::new();
+        asm.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushI64 { val: 0xff },
             AsmStatement::Ret,
-        ])).build();
+        ]));
+        let bytecode = BytecodeBuilder::new(asm).build();
         let result = Runner::new(bytecode).run();
         assert_eq!(result, Value::I64(0xff));
 
-        let bytecode = BytecodeBuilder::new(Asm::from(0, vec![], [
+        let mut asm = Asm::new();
+        asm.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::PushI64 { val: 2 },
             AsmStatement::Add,
             AsmStatement::PushI64 { val: 3 },
             AsmStatement::Add,
             AsmStatement::Ret,
-        ])).build();
+        ]));
+        let bytecode = BytecodeBuilder::new(asm).build();
         let result = Runner::new(bytecode).run();
         assert_eq!(result, Value::I64(6));
 
-        let bytecode = BytecodeBuilder::new(Asm::from(0, vec![], [
+        let mut asm = Asm::new();
+        asm.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushI64 { val: 6 },
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::Sub,
             AsmStatement::PushI64 { val: 2 },
             AsmStatement::Sub,
             AsmStatement::Ret,
-        ])).build();
+        ]));
+        let bytecode = BytecodeBuilder::new(asm).build();
         let result = Runner::new(bytecode).run();
         assert_eq!(result, Value::I64(3));
     }
 
     #[test]
     fn compare() {
-        let bytecode = BytecodeBuilder::new(Asm::from(0, vec![], [
+        let mut asm = Asm::new();
+        asm.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushI64 { val: 6 },
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::Eq,
             AsmStatement::Ret,
-        ])).build();
+        ]));
+        let bytecode = BytecodeBuilder::new(asm).build();
         let result = Runner::new(bytecode).run();
         assert_eq!(result, Value::Bool(false));
 
-        let bytecode = BytecodeBuilder::new(Asm::from(0, vec![], [
+        let mut asm = Asm::new();
+        asm.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushI64 { val: 255 },
             AsmStatement::PushI64 { val: 255 },
             AsmStatement::Eq,
             AsmStatement::Ret,
-        ])).build();
+        ]));
+        let bytecode = BytecodeBuilder::new(asm).build();
         let result = Runner::new(bytecode).run();
         assert_eq!(result, Value::Bool(true));
 
-        let bytecode = BytecodeBuilder::new(Asm::from(0, vec![], [
+        let mut asm = Asm::new();
+        asm.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushI64 { val: 255 },
             AsmStatement::PushI64 { val: 255 },
             AsmStatement::Ne,
             AsmStatement::Ret,
-        ])).build();
+        ]));
+        let bytecode = BytecodeBuilder::new(asm).build();
         let result = Runner::new(bytecode).run();
         assert_eq!(result, Value::Bool(false));
     }
 
     #[test]
     fn locals() {
-        let bytecode = BytecodeBuilder::new(Asm::from(2, vec![], [
+        let mut asm = Asm::new();
+        asm.push_fn(AsmFn::new(2, vec![
             AsmStatement::PushI64 { val: 13 },
             AsmStatement::Store { index: 0 },
             AsmStatement::PushI64 { val: 12 },
@@ -287,14 +344,16 @@ mod tests {
             AsmStatement::Load { index: 1 },
             AsmStatement::Add,
             AsmStatement::Ret,
-        ])).build();
+        ]));
+        let bytecode = BytecodeBuilder::new(asm).build();
         let result = Runner::new(bytecode).run();
         assert_eq!(result, Value::I64(25));
     }
 
     #[test]
     fn label_jump() {
-        let bytecode = BytecodeBuilder::new(Asm::from(0, vec![], [
+        let mut asm = Asm::new();
+        asm.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushI64 { val: 2 },
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::Eq,
@@ -307,8 +366,29 @@ mod tests {
             AsmStatement::Mul,
             AsmStatement::Label { label: AsmLabel::new(".L2") },
             AsmStatement::Ret,
-        ])).build();
+        ]));
+        let bytecode = BytecodeBuilder::new(asm).build();
         let result = Runner::new(bytecode).run();
         assert_eq!(result, Value::I64(2));
+    }
+
+    #[test]
+    fn function() {
+        let mut asm = Asm::new();
+        asm.consts.extend_from_slice(&[
+            Value::Fn(1),
+        ]);
+        asm.push_fn(AsmFn::new(0, vec![
+            AsmStatement::PushConst { index: 0 },
+            AsmStatement::Call { args: 0 },
+            AsmStatement::Ret,
+        ]));
+        asm.push_fn(AsmFn::new(0, vec![
+            AsmStatement::PushI64 { val: 5 },
+            AsmStatement::Ret,
+        ]));
+        let bytecode = BytecodeBuilder::new(asm).build();
+        let result = Runner::new(bytecode).run();
+        assert_eq!(result, Value::I64(5));
     }
 }

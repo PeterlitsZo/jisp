@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::asm::{Asm, AsmStatement};
+use crate::{asm::{Asm, AsmStatement}, bytecode::bytecode::BytecodeFn};
 
 use super::{ins, Bytecode};
 
@@ -16,78 +16,89 @@ impl BytecodeBuilder {
     pub fn build(self) -> Bytecode {
         type AS = AsmStatement;
 
-        let mut bytecode = Bytecode::new(self.asm.locals);
+        let mut bytecode = Bytecode::new();
 
-        let mut label_to_offset = HashMap::new();
-        let mut cur_offset = 0u32;
-        for stmt in self.asm.statements() {
-            match stmt {
-                AS::Label { label } => {
-                    label_to_offset.insert(label.clone(), cur_offset);
-                }
+        for func in &self.asm.fns {
+            let mut label_to_offset = HashMap::new();
+            let mut cur_offset = 0u32;
+            for stmt in &func.statements {
+                match stmt {
+                    AS::Label { label } => {
+                        label_to_offset.insert(label.clone(), cur_offset);
+                    }
 
-                AS::Ret | AS::Add | AS::Sub | AS::Mul | AS::Div | AS::Eq |
-                AS::Ne | AS::Lt | AS::Le | AS::Gt | AS::Ge => {
-                    cur_offset += 1;
-                }
+                    AS::Ret | AS::Add | AS::Sub | AS::Mul | AS::Div | AS::Eq |
+                    AS::Ne | AS::Lt | AS::Le | AS::Gt | AS::Ge => {
+                        cur_offset += 1;
+                    }
 
-                AS::PushI64 { val: _ } => {
-                    cur_offset += 1 + 8;
-                }
+                    AS::PushI64 { val: _ } => {
+                        cur_offset += 1 + 8;
+                    }
 
-                AS::Load { index: _ } | AS::Store { index: _ } |
-                AS::Jump { label: _ } | AS::JumpFalse { label: _ } |
-                AS::PushConst { index: _ } => {
-                    cur_offset += 1 + 4;
+                    AS::Load { index: _ } | AS::Store { index: _ } |
+                    AS::Jump { label: _ } | AS::JumpFalse { label: _ } |
+                    AS::PushConst { index: _ } | AS::Call { args: _ } => {
+                        cur_offset += 1 + 4;
+                    }
                 }
             }
-        }
-        for stmt in self.asm.statements() {
-            match stmt {
-                AS::Label { label: _ } => (),
 
-                AS::Ret => bytecode.push_byte(ins::RET),
+            let mut bcfn = BytecodeFn::new();
+            bcfn.locals = func.locals;
+            for stmt in &func.statements {
+                match stmt {
+                    AS::Label { label: _ } => (),
 
-                AS::PushI64 { val } => {
-                    bytecode.push_byte(ins::PUSH_I64);
-                    bytecode.push_bytes(&val.to_le_bytes());
-                },
-                AS::PushConst { index } => {
-                    bytecode.push_byte(ins::PUSH_CONST);
-                    bytecode.push_bytes(&index.to_le_bytes());
+                    AS::Ret => bcfn.push_byte(ins::RET),
+
+                    AS::PushI64 { val } => {
+                        bcfn.push_byte(ins::PUSH_I64);
+                        bcfn.push_bytes(&val.to_le_bytes());
+                    },
+                    AS::PushConst { index } => {
+                        bcfn.push_byte(ins::PUSH_CONST);
+                        bcfn.push_bytes(&index.to_le_bytes());
+                    }
+
+                    AS::Add => bcfn.push_byte(ins::ADD),
+                    AS::Sub => bcfn.push_byte(ins::SUB),
+                    AS::Mul => bcfn.push_byte(ins::MUL),
+                    AS::Div => bcfn.push_byte(ins::DIV),
+                    AS::Eq => bcfn.push_byte(ins::EQ),
+                    AS::Ne => bcfn.push_byte(ins::NE),
+                    AS::Lt => bcfn.push_byte(ins::LT),
+                    AS::Le => bcfn.push_byte(ins::LE),
+                    AS::Gt => bcfn.push_byte(ins::GT),
+                    AS::Ge => bcfn.push_byte(ins::GE),
+
+                    AS::Load { index } => {
+                        bcfn.push_byte(ins::LOAD);
+                        bcfn.push_bytes(&index.to_le_bytes());
+                    },
+                    AS::Store { index } => {
+                        bcfn.push_byte(ins::STORE);
+                        bcfn.push_bytes(&index.to_le_bytes());
+                    },
+
+                    AS::Jump { label } => {
+                        let offset = label_to_offset[&label];
+                        bcfn.push_byte(ins::JUMP);
+                        bcfn.push_bytes(&offset.to_le_bytes());
+                    },
+                    AS::JumpFalse { label } => {
+                        let offset = label_to_offset[&label];
+                        bcfn.push_byte(ins::JUMP_FALSE);
+                        bcfn.push_bytes(&offset.to_le_bytes());
+                    },
+
+                    AS::Call { args: num } => {
+                        bcfn.push_byte(ins::CALL);
+                        bcfn.push_bytes(&num.to_le_bytes());
+                    }
                 }
-
-                AS::Add => bytecode.push_byte(ins::ADD),
-                AS::Sub => bytecode.push_byte(ins::SUB),
-                AS::Mul => bytecode.push_byte(ins::MUL),
-                AS::Div => bytecode.push_byte(ins::DIV),
-                AS::Eq => bytecode.push_byte(ins::EQ),
-                AS::Ne => bytecode.push_byte(ins::NE),
-                AS::Lt => bytecode.push_byte(ins::LT),
-                AS::Le => bytecode.push_byte(ins::LE),
-                AS::Gt => bytecode.push_byte(ins::GT),
-                AS::Ge => bytecode.push_byte(ins::GE),
-
-                AS::Load { index } => {
-                    bytecode.push_byte(ins::LOAD);
-                    bytecode.push_bytes(&index.to_le_bytes());
-                },
-                AS::Store { index } => {
-                    bytecode.push_byte(ins::STORE);
-                    bytecode.push_bytes(&index.to_le_bytes());
-                },
-
-                AS::Jump { label } => {
-                    let offset = label_to_offset[label];
-                    bytecode.push_byte(ins::JUMP);
-                    bytecode.push_bytes(&offset.to_le_bytes());
-                },
-                AS::JumpFalse { label } => {
-                    let offset = label_to_offset[label];
-                    bytecode.push_byte(ins::JUMP_FALSE);
-                    bytecode.push_bytes(&offset.to_le_bytes());
-                },
             }
+            bytecode.fns.push(bcfn);
         }
         
         bytecode.consts = self.asm.consts;
@@ -97,42 +108,49 @@ impl BytecodeBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::asm::AsmLabel;
+    use crate::{asm::{AsmFn, AsmLabel}, value::Value};
 
     use super::*;
 
     #[test]
     fn basic() {
-        let asm = Asm::from(0, vec![], [
+        let mut asm = Asm::new();
+        asm.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushI64 { val: 0xff },
             AsmStatement::Ret,
-        ]);
+        ]));
         let bytecode_builder = BytecodeBuilder::new(asm);
         let bytecode = bytecode_builder.build();
-        assert_eq!(bytecode, Bytecode::from(0, vec![], [
+        let mut wanted = Bytecode::new();
+        wanted.fns.push(BytecodeFn::from(0, [
             ins::PUSH_I64, 0xff, 0, 0, 0, 0, 0, 0, 0,
             ins::RET,
         ]));
+        assert_eq!(bytecode, wanted);
 
-        let asm = Asm::from(0, vec![], [
+        let mut asm = Asm::new();
+        asm.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::PushI64 { val: 2 },
             AsmStatement::Add,
             AsmStatement::Ret,
-        ]);
+        ]));
         let bytecode_builder = BytecodeBuilder::new(asm);
         let bytecode = bytecode_builder.build();
-        assert_eq!(bytecode, Bytecode::from(0, vec![], [
+        let mut wanted = Bytecode::new();
+        wanted.fns.push(BytecodeFn::from(0, [
             ins::PUSH_I64, 0x01, 0, 0, 0, 0, 0, 0, 0,
             ins::PUSH_I64, 0x02, 0, 0, 0, 0, 0, 0, 0,
             ins::ADD,
             ins::RET,
         ]));
+        assert_eq!(bytecode, wanted);
     }
 
     #[test]
     fn label_jump() {
-        let asm = Asm::from(0, vec![], [
+        let mut asm = Asm::new();
+        asm.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushI64 { val: 2 },
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::Eq,
@@ -145,10 +163,11 @@ mod tests {
             AsmStatement::Mul,
             AsmStatement::Label { label: AsmLabel::new(".L2") },
             AsmStatement::Ret,
-        ]);
+        ]));
         let bytecode_builder = BytecodeBuilder::new(asm);
         let bytecode = bytecode_builder.build();
-        assert_eq!(bytecode, Bytecode::from(0, vec![], [
+        let mut wanted = Bytecode::new();
+        wanted.fns.push(BytecodeFn::from(0, [
             /* off: 0x00 = 00 */ ins::PUSH_I64, 0x02, 0, 0, 0, 0, 0, 0, 0,
             /* off: 0x09 = 09 */ ins::PUSH_I64, 0x01, 0, 0, 0, 0, 0, 0, 0,
             /* off: 0x12 = 18 */ ins::EQ,
@@ -160,19 +179,29 @@ mod tests {
             /* off: 0x38 = 56 */ ins::MUL,
             /* off: 0x39 = 57 */ ins::RET,
         ]));
+        assert_eq!(bytecode, wanted);
     }
 
     #[test]
     fn string() {
-        let asm = Asm::from(0, vec!["hello".to_string()], [
+        let mut asm = Asm::new();
+        asm.consts = vec![
+            Value::Str("hello".to_string()),
+        ];
+        asm.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushConst { index: 0 },
             AsmStatement::Ret,
-        ]);
+        ]));
         let bytecode_builder = BytecodeBuilder::new(asm);
         let bytecode = bytecode_builder.build();
-        assert_eq!(bytecode, Bytecode::from(0, vec!["hello".to_string()], [
+        let mut wanted = Bytecode::new();
+        wanted.consts = vec![
+            Value::Str("hello".to_string())
+        ];
+        wanted.fns.push(BytecodeFn::from(0, [
             /* off: 0x00 = 00 */ ins::PUSH_CONST, 0x00, 0, 0, 0,
             /* off: 0x05 = 05 */ ins::RET,
         ]));
+        assert_eq!(bytecode, wanted);
     }
 }
