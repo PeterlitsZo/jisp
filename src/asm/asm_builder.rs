@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{asm::asm_statement::AsmLabel, ast::{Ast, SExp}, value::Value};
+use crate::{asm::asm_statement::AsmLabel, ast::{Ast, SExp}, value::{Value, XFn}};
 
 use super::{asm::AsmFn, Asm, AsmStatement};
 
@@ -10,8 +10,9 @@ pub struct AsmBuilder {
     consts_index: HashMap<Value, u32>,
     consts: Vec<Value>,
 
-    fns: Vec<AsmFn>,
     fns_index: HashMap<String, u32>,
+    ifns: Vec<AsmFn>,
+    xfns: Vec<XFn>,
 }
 
 impl AsmBuilder {
@@ -23,8 +24,19 @@ impl AsmBuilder {
             consts: vec![],
 
             fns_index: HashMap::new(),
-            fns: vec![],
+            ifns: vec![],
+            xfns: vec![],
         }
+    }
+
+    pub fn register_xfn<F>(&mut self, name: String, xfn: F) where F: Fn(Vec<Value>) -> Value + 'static {
+        let xfn = XFn::new(name.clone(), xfn);
+        let xfn_value = Value::XFn(self.xfns.len() as u32);
+
+        self.xfns.push(xfn);
+        self.consts.push(xfn_value.clone());
+        self.consts_index.insert(xfn_value, self.consts.len() as u32 - 1);
+        self.fns_index.insert(name, self.consts.len() as u32 - 1);
     }
 
     pub fn build(mut self) -> Asm {
@@ -35,8 +47,9 @@ impl AsmBuilder {
             .build(ast);
 
         asm.consts = self.consts;
+        asm.xfns = self.xfns;
         asm.push_fn(main_fn);
-        for func in self.fns {
+        for func in self.ifns {
             asm.push_fn(func);
         }
         asm
@@ -171,7 +184,7 @@ impl<'a> AsmFnBuilder<'a> {
                     SExp::Sym(name) => name.clone(),
                     _ => panic!("runtime error"),
                 };
-                self.ab.consts.push(Value::Fn(self.ab.fns.len() as u32 + 1));
+                self.ab.consts.push(Value::IFn(self.ab.ifns.len() as u32 + 1));
                 self.ab.fns_index.insert(name, self.ab.consts.len() as u32 - 1);
 
                 let mut asm_fn_builder = AsmFnBuilder::new(self.ab);
@@ -195,7 +208,7 @@ impl<'a> AsmFnBuilder<'a> {
                     sub_ast.push_s_exp(s_exp.clone());
                 }
                 let func = asm_fn_builder.build(sub_ast);
-                self.ab.fns.push(func);
+                self.ab.ifns.push(func);
             },
             Op::Call => {
                 let name = match &lst[0] {
@@ -398,7 +411,7 @@ mod tests {
 
         let mut wanted = Asm::new();
         wanted.consts = vec![
-            Value::Fn(1),
+            Value::IFn(1),
         ];
         wanted.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushConst { index: 0 },
@@ -420,7 +433,7 @@ mod tests {
 
         let mut wanted = Asm::new();
         wanted.consts = vec![
-            Value::Fn(1),
+            Value::IFn(1),
         ];
         wanted.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushConst { index: 0 },
@@ -449,7 +462,7 @@ mod tests {
 
         let mut wanted = Asm::new();
         wanted.consts = vec![
-            Value::Fn(1),
+            Value::IFn(1),
         ];
         wanted.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushConst { index: 0 },
@@ -473,6 +486,36 @@ mod tests {
             AsmStatement::Load { index: 0 },
             AsmStatement::Mul,
             AsmStatement::Label { label: AsmLabel::new(".L2") },
+            AsmStatement::Ret,
+        ]));
+        assert_eq!(asm, wanted);
+
+        let token_stream = TokenStream::new(r###"
+            (x_add_3 5)
+        "###);
+        let ast = AstBuilder::new(token_stream).build();
+        let mut asm_builder = AsmBuilder::new(ast);
+        let x_add_3 = |args: Vec<Value>| {
+            assert!(args.len() == 1);
+            match args[0] {
+                Value::I64(val) => Value::I64(val + 3),
+                _ => panic!("unexpected value"),
+            }
+        };
+        asm_builder.register_xfn("x_add_3".to_string(), x_add_3);
+        let asm = asm_builder.build();
+
+        let mut wanted = Asm::new();
+        wanted.xfns = vec![
+            XFn::new("x_add_3".to_string(), x_add_3),
+        ];
+        wanted.consts = vec![
+            Value::XFn(0),
+        ];
+        wanted.push_fn(AsmFn::new(0, vec![
+            AsmStatement::PushConst { index: 0 },
+            AsmStatement::PushI64 { val: 5 },
+            AsmStatement::Call { args: 1 },
             AsmStatement::Ret,
         ]));
         assert_eq!(asm, wanted);

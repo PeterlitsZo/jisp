@@ -18,7 +18,7 @@ impl BytecodeBuilder {
 
         let mut bytecode = Bytecode::new();
 
-        for func in &self.asm.fns {
+        for func in &self.asm.ifns {
             let mut label_to_offset = HashMap::new();
             let mut cur_offset = 0u32;
             for stmt in &func.statements {
@@ -98,10 +98,11 @@ impl BytecodeBuilder {
                     }
                 }
             }
-            bytecode.fns.push(bcfn);
+            bytecode.ifns.push(bcfn);
         }
         
         bytecode.consts = self.asm.consts;
+        bytecode.xfns = self.asm.xfns;
         bytecode
     }
 }
@@ -122,7 +123,7 @@ mod tests {
         let bytecode_builder = BytecodeBuilder::new(asm);
         let bytecode = bytecode_builder.build();
         let mut wanted = Bytecode::new();
-        wanted.fns.push(BytecodeFn::from(0, [
+        wanted.ifns.push(BytecodeFn::from(0, [
             ins::PUSH_I64, 0xff, 0, 0, 0, 0, 0, 0, 0,
             ins::RET,
         ]));
@@ -138,7 +139,7 @@ mod tests {
         let bytecode_builder = BytecodeBuilder::new(asm);
         let bytecode = bytecode_builder.build();
         let mut wanted = Bytecode::new();
-        wanted.fns.push(BytecodeFn::from(0, [
+        wanted.ifns.push(BytecodeFn::from(0, [
             ins::PUSH_I64, 0x01, 0, 0, 0, 0, 0, 0, 0,
             ins::PUSH_I64, 0x02, 0, 0, 0, 0, 0, 0, 0,
             ins::ADD,
@@ -167,7 +168,7 @@ mod tests {
         let bytecode_builder = BytecodeBuilder::new(asm);
         let bytecode = bytecode_builder.build();
         let mut wanted = Bytecode::new();
-        wanted.fns.push(BytecodeFn::from(0, [
+        wanted.ifns.push(BytecodeFn::from(0, [
             /* off: 0x00 = 00 */ ins::PUSH_I64, 0x02, 0, 0, 0, 0, 0, 0, 0,
             /* off: 0x09 = 09 */ ins::PUSH_I64, 0x01, 0, 0, 0, 0, 0, 0, 0,
             /* off: 0x12 = 18 */ ins::EQ,
@@ -198,7 +199,7 @@ mod tests {
         wanted.consts = vec![
             Value::Str("hello".to_string())
         ];
-        wanted.fns.push(BytecodeFn::from(0, [
+        wanted.ifns.push(BytecodeFn::from(0, [
             /* off: 0x00 = 00 */ ins::PUSH_CONST, 0x00, 0, 0, 0,
             /* off: 0x05 = 05 */ ins::RET,
         ]));

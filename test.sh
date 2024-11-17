@@ -68,4 +68,6 @@ test 11 '(fn bar [] 3) (fn foo [] (+ (bar) 5)) (+ (bar) (foo))'
 test 8 '(fn add [x y] (+ x y)) (add 3 5)'
 test 120 '(fn fac [x] (if (== x 0) 1 (* (fac (- x 1)) x))) (fac 5)'
 
+test 120 '(x_fac 5)'
+
 cleanup

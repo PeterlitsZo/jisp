@@ -36,7 +36,7 @@ pub struct RunnerFrame<'r> {
 impl<'r> RunnerFrame<'r> {
     /// Build a [Runner].
     pub fn new(runner: &'r Runner, index: usize, args: Vec<Value>) -> Self {
-        let func = &runner.bytecode.fns[index];
+        let func = &runner.bytecode.ifns[index];
         let mut locals = RunnerLocals::new(func.locals as usize);
         for (i, val) in args.iter().enumerate() {
             locals.set(i, val.clone());
@@ -178,8 +178,12 @@ impl<'r> RunnerFrame<'r> {
 
                     let func = self.stack.pop();
                     let res = match func {
-                        Value::Fn(index) => {
+                        Value::IFn(index) => {
                             self.runner.run_frame(index as usize, arg_values)
+                        }
+                        Value::XFn(index) => {
+                            let xfn = &self.runner.bytecode.xfns[index as usize];
+                            xfn.call(arg_values)
                         }
                         _ => panic!("runtime error"),
                     };
@@ -257,7 +261,7 @@ impl RunnerLocals {
 
 #[cfg(test)]
 mod tests {
-    use crate::{asm::{Asm, AsmFn, AsmLabel, AsmStatement}, bytecode::{self, bytecode_builder::BytecodeBuilder}};
+    use crate::{asm::{Asm, AsmFn, AsmLabel, AsmStatement}, bytecode::{self, bytecode_builder::BytecodeBuilder}, value::XFn};
 
     use super::*;
 
@@ -379,7 +383,7 @@ mod tests {
     fn function() {
         let mut asm = Asm::new();
         asm.consts.extend_from_slice(&[
-            Value::Fn(1),
+            Value::IFn(1),
         ]);
         asm.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushConst { index: 0 },
@@ -396,7 +400,7 @@ mod tests {
 
         let mut asm = Asm::new();
         asm.consts = vec![
-            Value::Fn(1),
+            Value::IFn(1),
         ];
         asm.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushConst { index: 0 },
@@ -417,7 +421,7 @@ mod tests {
 
         let mut asm = Asm::new();
         asm.consts = vec![
-            Value::Fn(1),
+            Value::IFn(1),
         ];
         asm.push_fn(AsmFn::new(0, vec![
             AsmStatement::PushConst { index: 0 },
@@ -446,5 +450,28 @@ mod tests {
         let bytecode = BytecodeBuilder::new(asm).build();
         let result = Runner::new(bytecode).run();
         assert_eq!(result, Value::I64(120));
+
+        let mut asm = Asm::new();
+        asm.xfns = vec![
+            XFn::new("x_add_3".to_string(), |args: Vec<Value>| {
+                assert!(args.len() == 1);
+                match args[0] {
+                    Value::I64(val) => Value::I64(val + 3),
+                    _ => panic!("unexpected value"),
+                }
+            })
+        ];
+        asm.consts = vec![
+            Value::XFn(0),
+        ];
+        asm.push_fn(AsmFn::new(0, vec![
+            AsmStatement::PushConst { index: 0 },
+            AsmStatement::PushI64 { val: 5 },
+            AsmStatement::Call { args: 1 },
+            AsmStatement::Ret,
+        ]));
+        let bytecode = BytecodeBuilder::new(asm).build();
+        let result = Runner::new(bytecode).run();
+        assert_eq!(result, Value::I64(8));
     }
 }

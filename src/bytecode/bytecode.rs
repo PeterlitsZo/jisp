@@ -1,10 +1,11 @@
-use crate::value::Value;
+use crate::value::{Value, XFn};
 
 /// The bytecode.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Bytecode {
     pub consts: Vec<Value>, // The all consts.
-    pub fns: Vec<BytecodeFn>, // The functions.
+    pub ifns: Vec<BytecodeFn>, // The inner functions.
+    pub xfns: Vec<XFn>, // The extend functions.
 }
 
 impl Bytecode {
@@ -12,7 +13,8 @@ impl Bytecode {
     pub fn new() -> Self {
         Self {
             consts: vec![],
-            fns: vec![],
+            ifns: vec![],
+            xfns: vec![],
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::value::Value;
+use crate::value::{Value, XFn};
 
 use super::AsmStatement;
 
@@ -6,7 +6,8 @@ use super::AsmStatement;
 #[derive(Debug, PartialEq, Eq)]
 pub struct Asm {
     pub consts: Vec<Value>, // The consts.
-    pub fns: Vec<AsmFn>, // The functions.
+    pub ifns: Vec<AsmFn>, // The inner functions.
+    pub xfns: Vec<XFn>, // The extend functions.
 }
 
 impl Asm {
@@ -14,13 +15,14 @@ impl Asm {
     pub fn new() -> Self {
         Self {
             consts: Vec::new(),
-            fns: Vec::new(),
+            ifns: Vec::new(),
+            xfns: Vec::new(),
         }
     }
 
     /// Push a [AsmFn].
     pub fn push_fn(&mut self, f: AsmFn) {
-        self.fns.push(f);
+        self.ifns.push(f);
     }
 }
 
