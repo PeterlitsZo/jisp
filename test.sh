@@ -70,4 +70,17 @@ test 120 '(fn fac [x] (if (== x 0) 1 (* (fac (- x 1)) x))) (fac 5)'
 
 test 120 '(x_fac 5)'
 
+test 5 '(do (+ 10 10) 5)'
+test 50 '
+  (fn foo [] 5)
+  (fn repeat [times f]
+    (if (!= times 0)
+      (do
+        (let a (f))
+        (let b (repeat (- times 1) f))
+        (+ a b))
+      0))
+  (repeat 10 foo)
+'
+
 cleanup

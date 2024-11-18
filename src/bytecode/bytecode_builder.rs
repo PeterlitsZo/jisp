@@ -28,7 +28,7 @@ impl BytecodeBuilder {
                     }
 
                     AS::Ret | AS::Add | AS::Sub | AS::Mul | AS::Div | AS::Eq |
-                    AS::Ne | AS::Lt | AS::Le | AS::Gt | AS::Ge => {
+                    AS::Ne | AS::Lt | AS::Le | AS::Gt | AS::Ge | AS::Pop => {
                         cur_offset += 1;
                     }
 
@@ -60,6 +60,7 @@ impl BytecodeBuilder {
                         bcfn.push_byte(ins::PUSH_CONST);
                         bcfn.push_bytes(&index.to_le_bytes());
                     }
+                    AS::Pop => bcfn.push_byte(ins::POP),
 
                     AS::Add => bcfn.push_byte(ins::ADD),
                     AS::Sub => bcfn.push_byte(ins::SUB),

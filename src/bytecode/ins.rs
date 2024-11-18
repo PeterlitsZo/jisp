@@ -2,6 +2,7 @@ pub const RET: u8 = 0x00;
 
 pub const PUSH_I64: u8 = 0x11;
 pub const PUSH_CONST: u8 = 0x12;
+pub const POP: u8 = 0x13;
 
 pub const ADD: u8 = 0x22;
 pub const SUB: u8 = 0x23;

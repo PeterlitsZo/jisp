@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum Value {
+    Null,
     Undefined,
     I64(i64),
     Bool(bool),

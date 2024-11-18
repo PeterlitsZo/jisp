@@ -92,6 +92,7 @@ impl<'a> AsmFnBuilder<'a> {
             Let,
             If,
             Fn, Call,
+            Do,
         }
 
         let op = match &lst[0] {
@@ -108,6 +109,7 @@ impl<'a> AsmFnBuilder<'a> {
             SExp::Sym(sym) if sym == &"let".to_string() => Op::Let,
             SExp::Sym(sym) if sym == &"if".to_string() => Op::If,
             SExp::Sym(sym) if sym == &"fn".to_string() => Op::Fn,
+            SExp::Sym(sym) if sym == &"do".to_string() => Op::Do,
             _ => Op::Call,
         };
 
@@ -159,6 +161,17 @@ impl<'a> AsmFnBuilder<'a> {
                 };
                 self.build_value(&lst[2]);
                 self.func.push_statement(AsmStatement::Store { index });
+                let ac = Value::Null;
+                let idx = match self.ab.consts_index.get(&ac) {
+                    None => {
+                        self.ab.consts.push(ac.clone());
+                        let idx = self.ab.consts.len() as u32 - 1;
+                        self.ab.consts_index.insert(ac.clone(), idx);
+                        idx
+                    }
+                    Some(idx) => *idx,
+                };
+                self.func.push_statement(AsmStatement::PushConst { index: idx });
             },
             Op::If => {
                 self.build_value(&lst[1]);
@@ -175,7 +188,21 @@ impl<'a> AsmFnBuilder<'a> {
 
                 // False path.
                 self.func.push_statement(AsmStatement::Label { label: fpath_label });
-                self.build_value(&lst[3]);
+                if lst.len() >= 4 {
+                    self.build_value(&lst[3]);
+                } else {
+                    let ac = Value::Null;
+                    let idx = match self.ab.consts_index.get(&ac) {
+                        None => {
+                            self.ab.consts.push(ac.clone());
+                            let idx = self.ab.consts.len() as u32 - 1;
+                            self.ab.consts_index.insert(ac.clone(), idx);
+                            idx
+                        }
+                        Some(idx) => *idx,
+                    };
+                    self.func.push_statement(AsmStatement::PushConst { index: idx });
+                }
 
                 self.func.push_statement(AsmStatement::Label { label: end_label });
             },
@@ -215,13 +242,30 @@ impl<'a> AsmFnBuilder<'a> {
                     SExp::Sym(name) => name.clone(),
                     _ => panic!("runtime error"),
                 };
-                self.func.push_statement(AsmStatement::PushConst {
-                    index: *self.ab.fns_index.get(&name).unwrap()
-                });
+                let fn_index = self.ab.fns_index.get(&name);
+                if let Some(fn_index) = fn_index {
+                    self.func.push_statement(AsmStatement::PushConst {
+                        index: *fn_index,
+                    });
+                } else {
+                    self.build_value(&lst[0]);
+                }
+
                 for val in &lst[1..] {
                     self.build_value(val);
                 }
                 self.func.push_statement(AsmStatement::Call { args: lst.len() as u32 - 1 });
+            }
+            Op::Do => {
+                let mut is_first = true;
+                for val in &lst[1..] {
+                    if is_first {
+                        is_first = false
+                    } else {
+                        self.func.push_statement(AsmStatement::Pop);
+                    }
+                    self.build_value(val);
+                }
             }
         }
     }
@@ -235,8 +279,13 @@ impl<'a> AsmFnBuilder<'a> {
                 self.build_list(lst);
             }
             SExp::Sym(name) => {
-                let index = *self.locals_index.get(name).unwrap();
-                self.func.push_statement(AsmStatement::Load { index });
+                let local_index = self.locals_index.get(name);
+                if let Some(index) = local_index {
+                    self.func.push_statement(AsmStatement::Load { index: *index });
+                } else {
+                    let fn_index = self.ab.fns_index.get(name).unwrap();
+                    self.func.push_statement(AsmStatement::PushConst { index: *fn_index });
+                }
             }
             SExp::Str(val) => {
                 let ac = Value::Str(val.clone());
@@ -326,11 +375,18 @@ mod tests {
         let asm = AsmBuilder::new(ast).build();
 
         let mut wanted = Asm::new();
+        wanted.consts = vec![
+            Value::Null,
+        ];
         wanted.push_fn(AsmFn::new(2, vec![
             AsmStatement::PushI64 { val: 12 },
             AsmStatement::Store { index: 0 },
+            AsmStatement::PushConst { index: 0 },
+
             AsmStatement::PushI64 { val: 13 },
             AsmStatement::Store { index: 1 },
+            AsmStatement::PushConst { index: 0 },
+
             AsmStatement::Load { index: 0 },
             AsmStatement::Load { index: 1 },
             AsmStatement::Add,
@@ -376,14 +432,17 @@ mod tests {
         let mut wanted = Asm::new();
         wanted.consts = vec![
             Value::Str("hello".to_string()),
+            Value::Null,
             Value::Str("world".to_string()),
         ];
         wanted.push_fn(AsmFn::new(2, vec![
             AsmStatement::PushConst { index: 0 },
             AsmStatement::Store { index: 0 },
-
             AsmStatement::PushConst { index: 1 },
+
+            AsmStatement::PushConst { index: 2 },
             AsmStatement::Store { index: 1 },
+            AsmStatement::PushConst { index: 1 },
 
             AsmStatement::PushI64 { val: 1 },
             AsmStatement::PushI64 { val: 1 },
@@ -516,6 +575,67 @@ mod tests {
             AsmStatement::PushConst { index: 0 },
             AsmStatement::PushI64 { val: 5 },
             AsmStatement::Call { args: 1 },
+            AsmStatement::Ret,
+        ]));
+        assert_eq!(asm, wanted);
+
+        let token_stream = TokenStream::new(r###"
+            (fn foo [] 5)
+            (fn repeat [times f]
+              (if (!= times 0)
+                (do
+                  (let a (f))
+                  (let b (repeat (- times 1) f))
+                  (+ a b))
+                0))
+            (repeat 10 foo)
+        "###);
+        let ast = AstBuilder::new(token_stream).build();
+        let asm = AsmBuilder::new(ast).build();
+
+        let mut wanted = Asm::new();
+        wanted.consts = vec![
+            Value::IFn(1),
+            Value::IFn(2),
+            Value::Null,
+        ];
+        wanted.push_fn(AsmFn::new(0, vec![
+            AsmStatement::PushConst { index: 1 },
+            AsmStatement::PushI64 { val: 10 },
+            AsmStatement::PushConst { index: 0 },
+            AsmStatement::Call { args: 2 },
+            AsmStatement::Ret,
+        ]));
+        wanted.push_fn(AsmFn::new(0, vec![
+            AsmStatement::PushI64 { val: 5 },
+            AsmStatement::Ret,
+        ]));
+        wanted.push_fn(AsmFn::new(4, vec![
+            AsmStatement::Load { index: 0 },
+            AsmStatement::PushI64 { val: 0 },
+            AsmStatement::Ne,
+            AsmStatement::JumpFalse { label: AsmLabel::new(".L1") },
+            AsmStatement::Load { index: 1 },
+            AsmStatement::Call { args: 0 },
+            AsmStatement::Store { index: 2 },
+            AsmStatement::PushConst { index: 2 },
+            AsmStatement::Pop,
+            AsmStatement::PushConst { index: 1 },
+            AsmStatement::Load { index: 0 },
+            AsmStatement::PushI64 { val: 1 },
+            AsmStatement::Sub,
+            AsmStatement::Load { index: 1 },
+            AsmStatement::Call { args: 2 },
+            AsmStatement::Store { index: 3 },
+            AsmStatement::PushConst { index: 2 },
+            AsmStatement::Pop,
+            AsmStatement::Load { index: 2 },
+            AsmStatement::Load { index: 3 },
+            AsmStatement::Add,
+            AsmStatement::Jump { label: AsmLabel::new(".L2") },
+            AsmStatement::Label { label: AsmLabel::new(".L1") },
+            AsmStatement::PushI64 { val: 0 },
+            AsmStatement::Label { label: AsmLabel::new(".L2") },
             AsmStatement::Ret,
         ]));
         assert_eq!(asm, wanted);

@@ -74,6 +74,10 @@ impl<'r> RunnerFrame<'r> {
                     let index = u32::from_le_bytes(index.try_into().unwrap());
                     self.stack.push(self.runner.bytecode.consts[index as usize].clone());
                     self.pc += 5;
+                },
+                ins::POP => {
+                    let _ = self.stack.pop();
+                    self.pc += 1;
                 }
 
                 ins::ADD => {
@@ -473,5 +477,54 @@ mod tests {
         let bytecode = BytecodeBuilder::new(asm).build();
         let result = Runner::new(bytecode).run();
         assert_eq!(result, Value::I64(8));
+
+        let mut asm = Asm::new();
+        asm.consts = vec![
+            Value::IFn(1),
+            Value::IFn(2),
+            Value::Null,
+        ];
+        asm.push_fn(AsmFn::new(0, vec![
+            AsmStatement::PushConst { index: 1 },
+            AsmStatement::PushI64 { val: 10 },
+            AsmStatement::PushConst { index: 0 },
+            AsmStatement::Call { args: 2 },
+            AsmStatement::Ret,
+        ]));
+        asm.push_fn(AsmFn::new(0, vec![
+            AsmStatement::PushI64 { val: 5 },
+            AsmStatement::Ret,
+        ]));
+        asm.push_fn(AsmFn::new(4, vec![
+            AsmStatement::Load { index: 0 },
+            AsmStatement::PushI64 { val: 0 },
+            AsmStatement::Ne,
+            AsmStatement::JumpFalse { label: AsmLabel::new(".L1") },
+            AsmStatement::Load { index: 1 },
+            AsmStatement::Call { args: 0 },
+            AsmStatement::Store { index: 2 },
+            AsmStatement::PushConst { index: 2 },
+            AsmStatement::Pop,
+            AsmStatement::PushConst { index: 1 },
+            AsmStatement::Load { index: 0 },
+            AsmStatement::PushI64 { val: 1 },
+            AsmStatement::Sub,
+            AsmStatement::Load { index: 1 },
+            AsmStatement::Call { args: 2 },
+            AsmStatement::Store { index: 3 },
+            AsmStatement::PushConst { index: 2 },
+            AsmStatement::Pop,
+            AsmStatement::Load { index: 2 },
+            AsmStatement::Load { index: 3 },
+            AsmStatement::Add,
+            AsmStatement::Jump { label: AsmLabel::new(".L2") },
+            AsmStatement::Label { label: AsmLabel::new(".L1") },
+            AsmStatement::PushI64 { val: 0 },
+            AsmStatement::Label { label: AsmLabel::new(".L2") },
+            AsmStatement::Ret,
+        ]));
+        let bytecode = BytecodeBuilder::new(asm).build();
+        let result = Runner::new(bytecode).run();
+        assert_eq!(result, Value::I64(50));
     }
 }
