@@ -8,10 +8,4 @@ impl Value {
             Self::Int(val) => format!("{}", val),
         }
     }
-
-    pub fn as_int(&self) -> Option<i64> {
-        match self {
-            Self::Int(num) => Some(*num),
-        }
-    }
 }

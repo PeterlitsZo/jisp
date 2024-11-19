@@ -1,2 +1,2 @@
 test:
-	@python3 tests/main.py
+	@bash tests/main.sh

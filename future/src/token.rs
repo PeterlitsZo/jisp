@@ -1,5 +1,3 @@
-use crate::value;
-
 /// One token of the source.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Token<'a> {
@@ -46,14 +44,14 @@ impl<'a> TokenVal<'a> {
         }
     }
 
-    pub fn as_int_value(&self) -> Option<value::Value> {
+    pub fn as_int(&self) -> Option<i64> {
         match self {
-            Self::Int(val) => Some(value::Value::Int(*val)),
+            Self::Int(val) => Some(*val),
             _ => None,
         }
     }
 
-    pub fn as_name(&self) -> Option<&str> {
+    pub fn as_name(&self) -> Option<&'a str> {
         match self {
             Self::Name(name) => Some(name),
             _ => None,

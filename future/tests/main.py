@@ -2,6 +2,7 @@
 #
 # Need be run at the root of the project (e.g. "python3 tests/main.py").
 
+import yaml
 import subprocess
 
 def show_block(title, text):
@@ -24,18 +25,41 @@ def print_captured_stdout_stderr(process):
     if len(process.stderr.strip()) != 0:
         show_block("STDERR", process.stderr)
 
-def e2e_unit(group, index, script, wanted):
-    e2e_process = subprocess.run(["./target/release/jisp", "run", f"--code={script}"], capture_output=True)
-    if e2e_process.returncode != 0:
+def e2e_unit(group, index, case):
+    if type(case) is list:
+        code = case[0]
+        wanted = case[1]
+        want_error = False
+    elif type(case) is dict:
+        code = case['code']
+        wanted = case['wanted_error']
+        want_error = True
+
+    e2e_process = subprocess.run(["./target/release/jisp", "run", f"--code={code}"], capture_output=True)
+    if not want_error and e2e_process.returncode != 0:
         print(f"[FAILED] E2E {group} / {index} - Return code is not zero.")
-        show_block("SCRIPT", script)
+        show_block(" CODE ", code)
         show_block("WANTED", wanted)
         print_captured_stdout_stderr(e2e_process)
         show_end()
         return False
-    elif e2e_process.stdout != bytes(wanted, 'utf-8'):
+    elif not want_error and e2e_process.stdout != bytes(wanted, 'utf-8'):
         print(f"[FAILED] E2E {group} / {index} - result not matched.")
-        show_block("SCRIPT", script)
+        show_block(" CODE ", code)
+        show_block("WANTED", wanted)
+        print_captured_stdout_stderr(e2e_process)
+        show_end()
+        return False
+    elif want_error and e2e_process.returncode == 0:
+        print(f"[FAILED] E2E {group} / {index} - Return code is unexpected zero.")
+        show_block(" CODE ", code)
+        show_block("WANTED", wanted)
+        print_captured_stdout_stderr(e2e_process)
+        show_end()
+        return False
+    elif want_error and e2e_process.stderr != bytes(wanted, 'utf-8'):
+        print(f"[FAILED] E2E {group} / {index} - Wanted error message not correct.")
+        show_block(" CODE ", code)
         show_block("WANTED", wanted)
         print_captured_stdout_stderr(e2e_process)
         show_end()
@@ -44,53 +68,21 @@ def e2e_unit(group, index, script, wanted):
         return True
 
 def e2e():
-    case_groups = [
-        # OK-ed cases. #########################################################
-
-        ("simple number", [
-            ("-1", "-1"),
-            ("0", "0"),
-            ("1", "1"),
-            ("2", "2"),
-            ("500", "500"),
-        ]),
-
-        ("simple add and sub", [
-            ("(+ -1 1)", "0"),
-            ("(+ 1 1)", "2"),
-            ("(+ 1 2)", "3"),
-            ("(+ 100 250)", "350"),
-            ("(+ 1 2 3 4 5)", "15"),
-            ("(- 100 1)", "99"),
-        ]),
-
-        # TODO cases. ##########################################################
-
-        ("complex add and sub", [
-            ("(+ (+ 1 2) (+ 3 4 5))", "15"),
-            ("(+ 1 1 (- 4 2))", "4"),
-            ("(+ 5 (- 5 2 3) (- 13 13))", "5"),
-        ]),
-
-        ("times and div, rem", [
-            ("(* 4 5)", "20"),
-            ("(/ 12 4)", "3"),
-            ("(% 15 4)", "3"),
-            ("(+ (/ 12 4) (* 4 5))", "23")
-        ]),
-    ]
+    with open('tests/cases.yaml', 'r') as cases_file:
+        case_groups = yaml.safe_load(cases_file)['case_groups']
     all_ok = True
     bad_cases_limit = 5
     for case_group in case_groups:
-        group = case_group[0]
-        cases = case_group[1]
+        group = case_group['name']
+        cases = case_group['cases']
         for i, case in enumerate(cases):
-            ok = e2e_unit(group, i, case[0], case[1])
+            ok = e2e_unit(group, i, case)
             if not ok:
                 all_ok = False
                 bad_cases_limit -= 1
-                if bad_cases_limit == 0:
-                    break
+                break
+        if bad_cases_limit == 0:
+            break
     if all_ok:
         print("[  OK  ] E2E")
 

@@ -1,4 +1,10 @@
+mod asm_builder;
+mod asm_stat;
+mod asm;
+mod ast_builder;
+mod ast;
 mod error;
+mod s_exp;
 mod token_stream;
 mod token;
 mod value;
@@ -6,8 +12,10 @@ mod version;
 
 use std::{fs, io, process::exit};
 
+use asm_builder::AsmBuilder;
+use asm_stat::AsmStat;
+use ast_builder::AstBuilder;
 use clap::{arg, error::{ErrorKind, Result}, Command};
-use token::TokenKind;
 use token_stream::TokenStream;
 use value::Value;
 
@@ -61,52 +69,36 @@ fn handle_error(context: &str, err: io::Error) -> ! {
 }
 
 fn eval(code: &str) -> Result<value::Value, error::Error> {
-    let mut token_stream = TokenStream::new(code);
+    let token_stream = TokenStream::new(code);
+    let ast_builder = AstBuilder::new(token_stream);
+    let ast = ast_builder.build()?;
+    let asm_builder = AsmBuilder::new(ast);
+    let asm = asm_builder.build()?;
 
-    let token = token_stream.next();
-    let token = token.as_ref();
-    if token.is_some_and(|t| t.kind() == TokenKind::Lparam) {
-        let token = token_stream.next();
-        let token = token.as_ref();
-        let is_add = token.is_some_and(|t| {
-            t.kind() == TokenKind::Name && t.val().as_name().unwrap() == "+"
-        });
-        let is_sub = token.is_some_and(|t| {
-            t.kind() == TokenKind::Name && t.val().as_name().unwrap() == "-"
-        });
-        if !is_add && !is_sub {
-            return Err(error::Error{});
-        }
-        let mut result = 0i64;
-        let mut is_first = true;
-        loop {
-            let token = token_stream.next();
-            let token = token.as_ref();
-            if token.is_some_and(|t| t.kind() == TokenKind::Rparam) {
-                break;
+    let mut stack = vec![];
+    for stat in asm.stats() {
+        match stat {
+            AsmStat::PushInt { val } => stack.push(*val),
+            AsmStat::Add => {
+                let a = stack.pop().unwrap();
+                let b = stack.pop().unwrap();
+                stack.push(b + a);
+            },
+            AsmStat::Sub => {
+                let a = stack.pop().unwrap();
+                let b = stack.pop().unwrap();
+                stack.push(b - a);
+            },
+            AsmStat::Pop => {
+                stack.pop().unwrap();
             }
-            if !token.is_some_and(|t| t.kind() == TokenKind::Int) {
-                return Err(error::Error{});
-            }
-            let num = token.unwrap().val().as_int_value().unwrap();
-            let num = num.as_int().unwrap();
-            if is_first {
-                is_first = false;
-                result = num;
-            } else {
-                result += if is_add { num } else { -num };
+            AsmStat::Ret => {
+                return Ok(Value::Int(stack.pop().unwrap()))
             }
         }
-        Ok(Value::Int(result))
-    } else if token.is_some_and(|t| t.kind() == TokenKind::Int) {
-        let val = token.unwrap().val().as_int_value();
-        match val {
-            Some(val) => Ok(val),
-            None => Err(error::Error{})
-        }
-    } else {
-        Err(error::Error{})
     }
+
+    Err(error::Error{})
 }
 
 fn handle_result(r: Result<value::Value, error::Error>) {

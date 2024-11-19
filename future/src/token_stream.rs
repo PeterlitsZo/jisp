@@ -31,7 +31,7 @@ impl<'a> TokenStream<'a> {
         result
     }
 
-    pub fn next(&mut self) -> Option<token::Token> {
+    pub fn next(&mut self) -> Option<token::Token<'a>> {
         let cur_ch = match self.peek_ch_0 {
             None => return None,
             Some(c) => c,
@@ -69,7 +69,7 @@ impl<'a> TokenStream<'a> {
         }
     }
 
-    pub fn next_num(&mut self) -> Option<token::Token> {
+    pub fn next_num(&mut self) -> Option<token::Token<'a>> {
         let mut sign = 1;
         let mut num = 0_i64;
         let mut is_first = true;
@@ -104,7 +104,7 @@ impl<'a> TokenStream<'a> {
         Some(token)
     }
 
-    pub fn next_name(&mut self) -> Option<token::Token> {
+    pub fn next_name(&mut self) -> Option<token::Token<'a>> {
         let begin_offset = self.cur_ch_offset;
         let mut bytes_cnt = 0;
         let mut pos = TokenPos {
@@ -183,9 +183,11 @@ mod tests {
         for (index, token) in tokens.iter().enumerate() {
             let pos = TokenPos { lineno: token.0, offset: token.1, length: token.2 };
             let token = Token::new(token.3.clone(), pos);
-            assert_eq!(token_stream.next().unwrap(), token, "Check the {} token.", index);
+            let got_token = token_stream.next().unwrap();
+            assert_eq!(got_token, token, "Check the {} token.", index);
         }
-        assert_eq!(token_stream.next(), None, "Check the last, which should be None.");
+        let got_token = token_stream.next();
+        assert_eq!(got_token, None, "Check the last, which should be None.");
     }
 
     #[test]
