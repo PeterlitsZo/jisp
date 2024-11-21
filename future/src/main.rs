@@ -3,7 +3,10 @@ mod asm_stat;
 mod asm;
 mod ast_builder;
 mod ast;
+mod bytecode_builder;
+mod bytecode;
 mod error;
+mod runner;
 mod s_exp;
 mod token_stream;
 mod token;
@@ -13,11 +16,11 @@ mod version;
 use std::{fs, io, process::exit};
 
 use asm_builder::AsmBuilder;
-use asm_stat::AsmStat;
 use ast_builder::AstBuilder;
+use bytecode_builder::BytecodeBuilder;
 use clap::{arg, error::{ErrorKind, Result}, Command};
+use runner::Runner;
 use token_stream::TokenStream;
-use value::Value;
 
 fn main() {
     let mut command = Command::new("jisp")
@@ -74,31 +77,11 @@ fn eval(code: &str) -> Result<value::Value, error::Error> {
     let ast = ast_builder.build()?;
     let asm_builder = AsmBuilder::new(ast);
     let asm = asm_builder.build()?;
-
-    let mut stack = vec![];
-    for stat in asm.stats() {
-        match stat {
-            AsmStat::PushInt { val } => stack.push(*val),
-            AsmStat::Add => {
-                let a = stack.pop().unwrap();
-                let b = stack.pop().unwrap();
-                stack.push(b + a);
-            },
-            AsmStat::Sub => {
-                let a = stack.pop().unwrap();
-                let b = stack.pop().unwrap();
-                stack.push(b - a);
-            },
-            AsmStat::Pop => {
-                stack.pop().unwrap();
-            }
-            AsmStat::Ret => {
-                return Ok(Value::Int(stack.pop().unwrap()))
-            }
-        }
-    }
-
-    Err(error::Error{})
+    let bytecode_builder = BytecodeBuilder::new(asm);
+    let bytecode = bytecode_builder.build();
+    let runner = Runner::new(bytecode);
+    let result = runner.run();
+    Ok(result)
 }
 
 fn handle_result(r: Result<value::Value, error::Error>) {

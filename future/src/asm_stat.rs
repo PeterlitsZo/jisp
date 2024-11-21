@@ -4,5 +4,8 @@ pub enum AsmStat {
     Pop,
     Add,
     Sub,
+    Mul,
+    Div,
+    Mod,
     Ret,
 }

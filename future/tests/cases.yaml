@@ -24,6 +24,9 @@ case_groups:
   - ['(+ 5 (- 5 2 3) (- 13 13))', '5']
 - name: times and div, rem
   cases:
+  - ['(*)', '1']
+  - ['(* 5)', '5']
+  - ['(/ 1)', '1']
   - ['(* 4 5 6)', '120']
   - ['(/ 12 4)', '3']
   - ['(% 15 4)', '3']
@@ -45,3 +48,7 @@ case_groups:
     wanted_error: |
       0001 | (+ 1 1
            |       ^ SyntaxError: invalid syntax, forgot ')'?
+- name: floats
+  cases:
+  - ['5.0', '5.']
+  - ['(/ 1 2)', '0.5']

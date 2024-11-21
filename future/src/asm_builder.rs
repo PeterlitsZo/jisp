@@ -52,26 +52,47 @@ impl<'a> AsmBuilder<'a> {
         };
 
         #[derive(Clone, Copy)]
-        enum Op { Add, Sub }
+        enum Op { Add, Sub, Mul, Div, Mod }
         let op = match name {
             "+" => Op::Add,
             "-" => Op::Sub,
+            "*" => Op::Mul,
+            "/" => Op::Div,
+            "%" => Op::Mod,
             _ => return Err(Error{})
         };
 
         match (op, lst.len() - 1) {
             (Op::Add, 0) => asm.push_stat(AsmStat::PushInt { val: 0 }),
             (Op::Sub, 0) => return Err(Error {}),
+            (Op::Mul, 0) => asm.push_stat(AsmStat::PushInt { val: 1 }),
+            (Op::Div, 0) => return Err(Error {}),
             (Op::Sub, 1) => {
                 asm.push_stat(AsmStat::PushInt { val: 0 });
                 Self::build_s_exp(asm, &lst[1])?;
                 asm.push_stat(AsmStat::Sub);
+            }
+            (Op::Div, 1) => {
+                asm.push_stat(AsmStat::PushInt { val: 1 });
+                Self::build_s_exp(asm, &lst[1])?;
+                asm.push_stat(AsmStat::Div);
+            },
+            (Op::Mod, 2) => {
+                Self::build_s_exp(asm, &lst[1])?;
+                Self::build_s_exp(asm, &lst[2])?;
+                asm.push_stat(AsmStat::Mod);
+            }
+            (Op::Mod, _) => {
+                return Err(Error{})
             }
             (_, _) => {
                 let mut is_first = true;
                 let stat = match op {
                     Op::Add => AsmStat::Add,
                     Op::Sub => AsmStat::Sub,
+                    Op::Mul => AsmStat::Mul,
+                    Op::Div => AsmStat::Div,
+                    Op::Mod => AsmStat::Mod,
                 };
                 for s_exp in &lst[1..] {
                     Self::build_s_exp(asm, s_exp)?;
