@@ -1,4 +1,4 @@
-use crate::{asm::Asm, asm_stat::AsmStat, ast::Ast, error::Error, s_exp::{SExp, SExpKind}};
+use crate::{asm::{Asm, AsmStat}, ast::{Ast, SExp, SExpKind}, error::Error};
 
 pub struct AsmBuilder<'a> {
     ast: Ast<'a>,
@@ -132,7 +132,7 @@ impl<'a> AsmBuilder<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ast_builder::AstBuilder, token_stream::TokenStream};
+    use crate::{ast::AstBuilder, ts::TokenStream};
 
     use super::*;
 

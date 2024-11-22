@@ -1,6 +1,6 @@
 use std::str::CharIndices;
 
-use crate::token::{self, Token, TokenPos, TokenVal};
+use super::{Token, TokenPos, TokenVal};
 
 /// A stream of [Token]s.
 pub struct TokenStream<'a> {
@@ -31,7 +31,7 @@ impl<'a> TokenStream<'a> {
         result
     }
 
-    pub fn next(&mut self) -> Option<token::Token<'a>> {
+    pub fn next(&mut self) -> Option<Token<'a>> {
         let cur_ch = match self.peek_ch_0 {
             None => return None,
             Some(c) => c,
@@ -69,7 +69,7 @@ impl<'a> TokenStream<'a> {
         }
     }
 
-    pub fn next_num(&mut self) -> Option<token::Token<'a>> {
+    pub fn next_num(&mut self) -> Option<Token<'a>> {
         let mut sign = 1;
         let mut num = 0_i64;
         let mut is_first = true;
@@ -104,7 +104,7 @@ impl<'a> TokenStream<'a> {
         Some(token)
     }
 
-    pub fn next_name(&mut self) -> Option<token::Token<'a>> {
+    pub fn next_name(&mut self) -> Option<Token<'a>> {
         let begin_offset = self.cur_ch_offset;
         let mut bytes_cnt = 0;
         let mut pos = TokenPos {

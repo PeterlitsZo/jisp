@@ -1,4 +1,4 @@
-use crate::s_exp::SExp;
+use super::SExp;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Ast<'a> {

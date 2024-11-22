@@ -1,26 +1,20 @@
-mod asm_builder;
-mod asm_stat;
 mod asm;
-mod ast_builder;
 mod ast;
-mod bytecode_builder;
-mod bytecode;
+mod bc;
 mod error;
 mod runner;
-mod s_exp;
-mod token_stream;
-mod token;
+mod ts;
 mod value;
 mod version;
 
 use std::{fs, io, process::exit};
 
-use asm_builder::AsmBuilder;
-use ast_builder::AstBuilder;
-use bytecode_builder::BytecodeBuilder;
+use asm::AsmBuilder;
+use ast::AstBuilder;
+use bc::BytecodeBuilder;
 use clap::{arg, error::{ErrorKind, Result}, Command};
 use runner::Runner;
-use token_stream::TokenStream;
+use ts::TokenStream;
 
 fn main() {
     let mut command = Command::new("jisp")

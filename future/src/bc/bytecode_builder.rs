@@ -1,4 +1,4 @@
-use crate::{asm::Asm, asm_stat::AsmStat, bytecode::{Bytecode, Op}};
+use crate::{asm::{Asm, AsmStat}, bc::{Bytecode, Op}};
 
 pub struct BytecodeBuilder {
     asm: Asm,

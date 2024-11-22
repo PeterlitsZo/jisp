@@ -1,4 +1,4 @@
-use crate::asm_stat::AsmStat;
+use crate::asm::AsmStat;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Asm {

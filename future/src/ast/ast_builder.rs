@@ -1,4 +1,5 @@
-use crate::{ast::Ast, error::Error, s_exp::SExp, token::{Token, TokenKind}, token_stream::TokenStream};
+use crate::{error::Error, ts::{Token, TokenKind, TokenStream}};
+use super::{Ast, SExp};
 
 pub struct AstBuilder<'a> {
     token_stream: TokenStream<'a>,

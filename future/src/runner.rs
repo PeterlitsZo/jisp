@@ -1,4 +1,4 @@
-use crate::{bytecode::{Bytecode, Op}, error::Error, value::{Value, ValueKind}};
+use crate::{bc::{Bytecode, Op}, error::Error, value::{Value, ValueKind}};
 
 pub struct Runner {
     bytecode: Bytecode,
@@ -173,7 +173,7 @@ impl Runner {
 
 #[cfg(test)]
 mod tests {
-    use crate::{asm::Asm, asm_stat::AsmStat, bytecode_builder::BytecodeBuilder};
+    use crate::{asm::{Asm, AsmStat}, bc::BytecodeBuilder};
 
     use super::*;
 
