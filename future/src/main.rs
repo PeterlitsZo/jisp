@@ -80,7 +80,7 @@ fn eval(code: &str) -> Result<value::Value, error::Error> {
     let bytecode_builder = BytecodeBuilder::new(asm);
     let bytecode = bytecode_builder.build();
     let runner = Runner::new(bytecode);
-    let result = runner.run();
+    let result = runner.run()?;
     Ok(result)
 }
 

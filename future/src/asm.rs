@@ -1,6 +1,6 @@
 use crate::asm_stat::AsmStat;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Asm {
     stats: Vec<AsmStat>,
 }
@@ -9,6 +9,12 @@ impl Asm {
     /// Create an empty [Asm].
     pub fn new() -> Self {
         Self { stats: vec![] }
+    }
+
+    /// Create an [Asm] from [AsmStat]s.
+    #[cfg(test)]
+    pub fn from<T>(stats: T) -> Self where T: Into<Vec<AsmStat>> {
+        Self { stats: stats.into() }
     }
 
     /// Push an [AsmStat].

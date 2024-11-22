@@ -30,7 +30,13 @@ impl<'a> AsmBuilder<'a> {
         match s_exp.kind() {
             SExpKind::Int => Self::build_int(asm, s_exp)?,
             SExpKind::List => Self::build_list(asm, s_exp)?,
-            _ => return Err(Error{})
+            SExpKind::Name => {
+                match s_exp.as_name().unwrap() {
+                    "true" => asm.push_stat(AsmStat::PushBool { val: true }),
+                    "false" => asm.push_stat(AsmStat::PushBool { val: false }),
+                    _ => return Err(Error{})
+                }
+            }
         }
         Ok(())
     }
@@ -52,13 +58,19 @@ impl<'a> AsmBuilder<'a> {
         };
 
         #[derive(Clone, Copy)]
-        enum Op { Add, Sub, Mul, Div, Mod }
+        enum Op { Add, Sub, Mul, Div, Mod, Eq, Ne, Lt, Le, Gt, Ge }
         let op = match name {
             "+" => Op::Add,
             "-" => Op::Sub,
             "*" => Op::Mul,
             "/" => Op::Div,
             "%" => Op::Mod,
+            "==" => Op::Eq,
+            "!=" => Op::Ne,
+            "<" => Op::Lt,
+            "<=" => Op::Le,
+            ">" => Op::Gt,
+            ">=" => Op::Ge,
             _ => return Err(Error{})
         };
 
@@ -77,22 +89,29 @@ impl<'a> AsmBuilder<'a> {
                 Self::build_s_exp(asm, &lst[1])?;
                 asm.push_stat(AsmStat::Div);
             },
-            (Op::Mod, 2) => {
+            (Op::Mod | Op::Eq | Op::Ne | Op::Lt | Op::Le | Op::Gt | Op::Ge, 2) => {
                 Self::build_s_exp(asm, &lst[1])?;
                 Self::build_s_exp(asm, &lst[2])?;
-                asm.push_stat(AsmStat::Mod);
+                let stat = match op {
+                    Op::Mod => AsmStat::Mod,
+                    Op::Eq => AsmStat::Eq,
+                    Op::Ne => AsmStat::Ne,
+                    Op::Lt => AsmStat::Lt,
+                    Op::Le => AsmStat::Le,
+                    Op::Gt => AsmStat::Gt,
+                    Op::Ge => AsmStat::Ge,
+                    _ => panic!("unexpected op"),
+                };
+                asm.push_stat(stat);
             }
-            (Op::Mod, _) => {
-                return Err(Error{})
-            }
-            (_, _) => {
+            (Op::Add | Op::Sub | Op::Mul | Op::Div, _) => {
                 let mut is_first = true;
                 let stat = match op {
                     Op::Add => AsmStat::Add,
                     Op::Sub => AsmStat::Sub,
                     Op::Mul => AsmStat::Mul,
                     Op::Div => AsmStat::Div,
-                    Op::Mod => AsmStat::Mod,
+                    _ => panic!("unexpected op"),
                 };
                 for s_exp in &lst[1..] {
                     Self::build_s_exp(asm, s_exp)?;
@@ -102,8 +121,37 @@ impl<'a> AsmBuilder<'a> {
                         asm.push_stat(stat);
                     }
                 }
-            },
+            }
+            (_, _) => {
+                return Err(Error{})
+            }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{ast_builder::AstBuilder, token_stream::TokenStream};
+
+    use super::*;
+
+    fn test_asm_builder(source: &str, wanted: Asm) {
+        let token_stream = TokenStream::new(source);
+        let ast_builder = AstBuilder::new(token_stream);
+        let ast = ast_builder.build().unwrap();
+        let asm_builder = AsmBuilder::new(ast);
+        let asm = asm_builder.build().unwrap();
+        assert_eq!(asm, wanted);
+    }
+
+    #[test]
+    fn compare() {
+        test_asm_builder("(== true true)", Asm::from([
+            AsmStat::PushBool { val: true },
+            AsmStat::PushBool { val: true },
+            AsmStat::Eq,
+            AsmStat::Ret,
+        ]));
     }
 }
