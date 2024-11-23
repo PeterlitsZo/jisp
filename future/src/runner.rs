@@ -13,10 +13,19 @@ impl Runner {
     }
 
     /// Run and return the [Value].
-    pub fn run(mut self) -> Result<Value, Error> {
+    pub fn run(mut self) -> Result<Value, Error<'static>> {
         let bytes = self.bytecode.bytes();
         loop {
             let op = Op::from_byte(bytes[self.pc]).unwrap();
+            let new_bad_value_type = |a: &Value, b: &Value| {
+                Error::runtime(
+                    format!(
+                        "Bad value type for {} at pc={}: {} and {}",
+                        op.display(), self.pc, a.kind().display(), b.kind().display()
+                    )
+                )
+            };
+
             match op {
                 Op::PushInt => {
                     let val = &bytes[self.pc+1..self.pc+9];
@@ -28,7 +37,12 @@ impl Runner {
                     let val = match *val {
                         0 => false,
                         1 => true,
-                        _ => return Err(Error{})
+                        _ => return Err(Error::runtime(
+                            format!(
+                                "Bad val for {} at pc={}: {}",
+                                op.display(), self.pc, *val,
+                            )
+                        )),
                     };
                     self.stack.push(Value::Bool(val));
                 }
@@ -42,7 +56,7 @@ impl Runner {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Int(a.as_int().unwrap() + b.as_int().unwrap())
                         }
-                        _ => return Err(Error{})
+                        _ => return Err(new_bad_value_type(&a, &b))
                     };
                     self.stack.push(result);
                 }
@@ -53,7 +67,7 @@ impl Runner {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Int(a.as_int().unwrap() - b.as_int().unwrap())
                         }
-                        _ => return Err(Error{})
+                        _ => return Err(new_bad_value_type(&a, &b))
                     };
                     self.stack.push(result);
                 }
@@ -64,7 +78,7 @@ impl Runner {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Int(a.as_int().unwrap() * b.as_int().unwrap())
                         }
-                        _ => return Err(Error{})
+                        _ => return Err(new_bad_value_type(&a, &b))
                     };
                     self.stack.push(result);
                 }
@@ -75,7 +89,7 @@ impl Runner {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Int(a.as_int().unwrap() / b.as_int().unwrap())
                         }
-                        _ => return Err(Error{})
+                        _ => return Err(new_bad_value_type(&a, &b))
                     };
                     self.stack.push(result);
                 }
@@ -86,7 +100,7 @@ impl Runner {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Int(a.as_int().unwrap() % b.as_int().unwrap())
                         }
-                        _ => return Err(Error{})
+                        _ => return Err(new_bad_value_type(&a, &b))
                     };
                     self.stack.push(result);
                 },
@@ -100,7 +114,7 @@ impl Runner {
                         (ValueKind::Bool, ValueKind::Bool) => {
                             Value::Bool(a.as_bool().unwrap() == b.as_bool().unwrap())
                         }
-                        _ => return Err(Error{})
+                        _ => return Err(new_bad_value_type(&a, &b))
                     };
                     self.stack.push(result);
                 }
@@ -114,7 +128,7 @@ impl Runner {
                         (ValueKind::Bool, ValueKind::Bool) => {
                             Value::Bool(a.as_bool().unwrap() != b.as_bool().unwrap())
                         }
-                        _ => return Err(Error{})
+                        _ => return Err(new_bad_value_type(&a, &b))
                     };
                     self.stack.push(result);
                 }
@@ -125,7 +139,7 @@ impl Runner {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Bool(a.as_int().unwrap() < b.as_int().unwrap())
                         }
-                        _ => return Err(Error{})
+                        _ => return Err(new_bad_value_type(&a, &b))
                     };
                     self.stack.push(result);
                 }
@@ -136,7 +150,7 @@ impl Runner {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Bool(a.as_int().unwrap() <= b.as_int().unwrap())
                         }
-                        _ => return Err(Error{})
+                        _ => return Err(new_bad_value_type(&a, &b))
                     };
                     self.stack.push(result);
                 }
@@ -147,7 +161,7 @@ impl Runner {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Bool(a.as_int().unwrap() > b.as_int().unwrap())
                         }
-                        _ => return Err(Error{})
+                        _ => return Err(new_bad_value_type(&a, &b))
                     };
                     self.stack.push(result);
                 }
@@ -158,7 +172,7 @@ impl Runner {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Bool(a.as_int().unwrap() >= b.as_int().unwrap())
                         }
-                        _ => return Err(Error{})
+                        _ => return Err(new_bad_value_type(&a, &b))
                     };
                     self.stack.push(result);
                 }

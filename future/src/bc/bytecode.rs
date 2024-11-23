@@ -60,6 +60,26 @@ impl Op {
     const GE: u8 = 0x15;
     const RET: u8 = 0x18;
 
+    pub fn display(&self) -> &'static str {
+        match self {
+            Self::PushInt => "PUSH_INT",
+            Self::PushBool => "PUSH_BOOL",
+            Self::Pop => "POP",
+            Self::Add => "ADD",
+            Self::Sub => "SUB",
+            Self::Mul => "MUL",
+            Self::Div => "DIV",
+            Self::Mod => "MOD",
+            Self::Eq => "EQ",
+            Self::Ne => "NE",
+            Self::Lt => "LT",
+            Self::Le => "LE",
+            Self::Gt => "GT",
+            Self::Ge => "GE",
+            Self::Ret => "RET",
+        }
+    }
+
     pub fn from_byte(byte: u8) -> Option<Self> {
         match byte {
             Self::PUSH_INT => Some(Self::PushInt),

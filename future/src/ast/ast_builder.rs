@@ -3,22 +3,21 @@ use super::{Ast, SExp};
 
 pub struct AstBuilder<'a> {
     token_stream: TokenStream<'a>,
-    peek_token: Option<Token<'a>>,
+    peek_token: Token<'a>,
 }
 
 impl<'a> AstBuilder<'a> {
     /// Create a new [AstBuilder] from [TokenStream].
-    pub fn new(token_stream: TokenStream<'a>) -> Self {
-        let mut result = Self { token_stream, peek_token: None };
-        result.peek();
-        result
+    pub fn new(mut token_stream: TokenStream<'a>) -> Self {
+        let peek_token = token_stream.next();
+        Self { token_stream, peek_token }
     }
 
     /// Consume self and return a built [Ast].
-    pub fn build(mut self) -> Result<Ast<'a>, Error> {
+    pub fn build(mut self) -> Result<Ast<'a>, Error<'a>> {
         let mut ast = Ast::new();
         loop {
-            if self.peek_token.is_none() {
+            if self.peek_token.is_eof() {
                 break;
             }
             let s_exp = self.next_s_exp()?;
@@ -27,57 +26,47 @@ impl<'a> AstBuilder<'a> {
         Ok(ast)
     }
 
-    fn peek(&mut self) {
-        if self.peek_token.is_none() {
-            self.peek_token = self.token_stream.next();
-        }
-    }
-
     fn consume(&mut self) {
-        if self.peek_token.is_none() {
-            panic!("unexpected None");
-        };
-        self.peek_token = None;
-        self.peek();
+        self.peek_token = self.token_stream.next();
     }
 
-    fn skip(&mut self, kind: TokenKind) -> Result<(), Error> {
-        let token = match &self.peek_token {
-            None => panic!("unexpected None"),
-            Some(t) => t,
-        };
-        if token.kind() != kind {
-            return Err(Error::new());
+    fn skip(&mut self, kind: TokenKind) -> Result<(), Error<'static>> {
+        if self.peek_token.kind() != kind {
+            return Err(Error::todo(
+                format!("Try skip {}, got {}.", kind.display(), self.peek_token.kind().display())
+            ));
         }
         self.consume();
         Ok(())
     }
 
-    fn next_s_exp(&mut self) -> Result<SExp<'a>, Error> {
-        match &self.peek_token {
-            None => panic!("unexpected None"),
-            Some(t) if t.kind() == TokenKind::Lparam => {
+    fn next_s_exp(&mut self) -> Result<SExp<'a>, Error<'a>> {
+        match self.peek_token.kind() {
+            TokenKind::Lparam => {
                 self.next_list()
             },
-            Some(t) if t.kind() == TokenKind::Name => {
+            TokenKind::Name => {
                 self.next_name()
             }
-            Some(t) if t.kind() == TokenKind::Int => {
+            TokenKind::Int => {
                 self.next_int()
             }
-            _ => todo!(),
+            _ => Err(Error::todo("Unexpected token.")),
         }
     }
 
-    fn next_list(&mut self) -> Result<SExp<'a>, Error> {
+    fn next_list(&mut self) -> Result<SExp<'a>, Error<'a>> {
         let mut result = vec![];
 
         self.skip(TokenKind::Lparam)?;
         loop {
-            match &self.peek_token {
-                Some(t) if t.kind() == TokenKind::Rparam => {
+            match &self.peek_token.kind() {
+                TokenKind::Rparam => {
                     break;
                 }
+                TokenKind::Eof => return Err(Error::syntax(
+                    self.token_stream.origin(), self.peek_token.pos(), "Invalid syntax, maybe forgot ')'."
+                )),
                 _ => ()
             }
             result.push(self.next_s_exp()?);
@@ -87,15 +76,15 @@ impl<'a> AstBuilder<'a> {
         Ok(SExp::List(result))
     }
 
-    fn next_name(&mut self) -> Result<SExp<'a>, Error> {
-        let t = self.peek_token.as_ref().unwrap();
+    fn next_name(&mut self) -> Result<SExp<'a>, Error<'static>> {
+        let t = &self.peek_token;
         let result = Ok(SExp::Name(t.val().as_name().unwrap()));
         self.skip(TokenKind::Name)?;
         result
     }
 
-    fn next_int(&mut self) -> Result<SExp<'a>, Error> {
-        let t = self.peek_token.as_ref().unwrap();
+    fn next_int(&mut self) -> Result<SExp<'a>, Error<'static>> {
+        let t = &self.peek_token;
         let result = Ok(SExp::Int(t.val().as_int().unwrap()));
         self.skip(TokenKind::Int)?;
         result

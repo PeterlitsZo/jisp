@@ -17,6 +17,14 @@ impl<'a> Token<'a> {
     pub fn val(&self) -> &TokenVal<'a> {
         &self.val
     }
+
+    pub fn pos(&self) -> TokenPos {
+        self.pos
+    }
+
+    pub fn is_eof(&self) -> bool {
+        self.kind() == TokenKind::Eof
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -32,6 +40,7 @@ pub enum TokenVal<'a> {
     Rparam,
     Int(i64),
     Name(&'a str),
+    Eof,
 }
 
 impl<'a> TokenVal<'a> {
@@ -41,6 +50,7 @@ impl<'a> TokenVal<'a> {
             Self::Rparam => TokenKind::Rparam,
             Self::Int(_) => TokenKind::Int,
             Self::Name(_) => TokenKind::Name,
+            Self::Eof => TokenKind::Eof,
         }
     }
 
@@ -65,4 +75,17 @@ pub enum TokenKind {
     Rparam,
     Int,
     Name,
+    Eof,
+}
+
+impl TokenKind {
+    pub fn display(&self) -> &'static str {
+        match self {
+            Self::Lparam => "LPARAM",
+            Self::Rparam => "RPARAM",
+            Self::Int => "INT",
+            Self::Name => "NAME",
+            Self::Eof => "EOF",
+        }
+    }
 }

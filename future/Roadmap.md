@@ -1,11 +1,11 @@
 # 2024
 
-- Support number.
-- Support add, sub, times, div and rem.
-- Support compare.
-- Support boolean.
+- DONE Support number.
+- DONE Support add, sub, times, div and rem.
+- DONE Support compare.
+- DONE Support boolean.
 - Support big number.
-- Support good error struct.
+- DONE Support good error struct.
 - Support comments.
 - Support multi-lines strings.
 - Support array.
@@ -21,3 +21,5 @@
            (li "List item 2.")
            (li "List item 3.")))
   ```
+- Support REPL.
+- Remove all TODO error.

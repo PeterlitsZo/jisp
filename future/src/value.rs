@@ -38,3 +38,12 @@ pub enum ValueKind {
     Int,
     Bool,
 }
+
+impl ValueKind {
+    pub fn display(&self) -> &'static str {
+        match self {
+            Self::Int => "Int",
+            Self::Bool => "Bool",
+        }
+    }
+}

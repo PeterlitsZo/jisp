@@ -42,3 +42,13 @@ pub enum SExpKind {
     Name,
     List,
 }
+
+impl SExpKind {
+    pub fn display(&self) -> &'static str {
+        match self {
+            SExpKind::Int => "INT",
+            SExpKind::Name => "NAME",
+            SExpKind::List => "LIST",
+        }
+    }
+}

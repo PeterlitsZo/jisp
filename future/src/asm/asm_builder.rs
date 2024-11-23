@@ -11,7 +11,7 @@ impl<'a> AsmBuilder<'a> {
     }
 
     /// Consume self and return a built [Asm].
-    pub fn build(self) -> Result<Asm, Error> {
+    pub fn build(self) -> Result<Asm, Error<'static>> {
         let mut asm = Asm::new();
         let mut is_first_s_exp = true;
         for s_exp in self.ast.s_exps() {
@@ -26,7 +26,7 @@ impl<'a> AsmBuilder<'a> {
         Ok(asm)
     }
 
-    fn build_s_exp(asm: &mut Asm, s_exp: &SExp<'a>) -> Result<(), Error> {
+    fn build_s_exp(asm: &mut Asm, s_exp: &SExp<'a>) -> Result<(), Error<'static>> {
         match s_exp.kind() {
             SExpKind::Int => Self::build_int(asm, s_exp)?,
             SExpKind::List => Self::build_list(asm, s_exp)?,
@@ -34,27 +34,32 @@ impl<'a> AsmBuilder<'a> {
                 match s_exp.as_name().unwrap() {
                     "true" => asm.push_stat(AsmStat::PushBool { val: true }),
                     "false" => asm.push_stat(AsmStat::PushBool { val: false }),
-                    _ => return Err(Error{})
+                    _ => return Err(Error::todo("Expected true or false.")),
                 }
             }
         }
         Ok(())
     }
 
-    fn build_int(asm: &mut Asm, s_exp: &SExp<'a>) -> Result<(), Error> {
+    fn build_int(asm: &mut Asm, s_exp: &SExp<'a>) -> Result<(), Error<'static>> {
         let val = s_exp.as_int().unwrap();
         asm.push_stat(AsmStat::PushInt { val });
         Ok(())
     }
 
-    fn build_list(asm: &mut Asm, s_exp: &SExp<'a>) -> Result<(), Error> {
+    fn build_list(asm: &mut Asm, s_exp: &SExp<'a>) -> Result<(), Error<'static>> {
         let lst = s_exp.as_list().unwrap();
         if lst.is_empty() {
-            return Err(Error{})
+            return Err(Error::todo("Unexpected empty list."))
         }
         let name = match lst[0].kind() {
             SExpKind::Name => lst[0].as_name().unwrap(),
-            _ => return Err(Error{})
+            _ => return Err(Error::todo(
+                format!(
+                    "Unexpected kind for list's first token: {}",
+                    lst[0].kind().display(),
+                )
+            ))
         };
 
         #[derive(Clone, Copy)]
@@ -71,14 +76,21 @@ impl<'a> AsmBuilder<'a> {
             "<=" => Op::Le,
             ">" => Op::Gt,
             ">=" => Op::Ge,
-            _ => return Err(Error{})
+            _ => return Err(Error::todo(format!(
+                "Unexpected name for list's first token: {:?}.",
+                name
+            )))
         };
 
         match (op, lst.len() - 1) {
             (Op::Add, 0) => asm.push_stat(AsmStat::PushInt { val: 0 }),
-            (Op::Sub, 0) => return Err(Error {}),
+            (Op::Sub, 0) => return Err(Error::todo(
+                "Unexpected args number 0.",
+            )),
             (Op::Mul, 0) => asm.push_stat(AsmStat::PushInt { val: 1 }),
-            (Op::Div, 0) => return Err(Error {}),
+            (Op::Div, 0) => return Err(Error::todo(
+                "Unexpected args number 0.",
+            )),
             (Op::Sub, 1) => {
                 asm.push_stat(AsmStat::PushInt { val: 0 });
                 Self::build_s_exp(asm, &lst[1])?;
@@ -122,8 +134,10 @@ impl<'a> AsmBuilder<'a> {
                     }
                 }
             }
-            (_, _) => {
-                return Err(Error{})
+            (_, num) => {
+                return Err(Error::todo(format!(
+                    "Unexpected args number {} for {:?}", num, name,
+                )))
             }
         }
         Ok(())

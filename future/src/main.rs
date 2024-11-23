@@ -80,8 +80,8 @@ fn eval(code: &str) -> Result<value::Value, error::Error> {
 
 fn handle_result(r: Result<value::Value, error::Error>) {
     match r {
-        Err(_) => {
-            eprintln!("jisp: something error happend");
+        Err(err) => {
+            eprintln!("{:?}", err);
             exit(1);
         }
         Ok(v) => print!("{}", v.display()),

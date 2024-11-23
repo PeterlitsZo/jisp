@@ -12,6 +12,7 @@ pub struct TokenStream<'a> {
     peek_ch_1: Option<char>,
     cur_lineno: u32,
     cur_offset: u32,
+    eof_pos: TokenPos,
 }
 
 impl<'a> TokenStream<'a> {
@@ -26,14 +27,17 @@ impl<'a> TokenStream<'a> {
             peek_ch_1: None,
             cur_lineno: 1,
             cur_offset: 1,
+            eof_pos: TokenPos { lineno: 1, offset: 1, length: 0 }
         };
         result.peek();
         result
     }
 
-    pub fn next(&mut self) -> Option<Token<'a>> {
+    pub fn next(&mut self) -> Token<'a> {
         let cur_ch = match self.peek_ch_0 {
-            None => return None,
+            None => {
+                return Token::new(TokenVal::Eof, self.eof_pos);
+            }
             Some(c) => c,
         };
 
@@ -55,7 +59,9 @@ impl<'a> TokenStream<'a> {
                     _ => panic!("uncoverd token"),
                 };
                 self.consume();
-                Some(token)
+                self.eof_pos.lineno = pos.lineno;
+                self.eof_pos.offset = pos.offset + pos.length;
+                token
             },
             '0'..='9' => self.next_num(),
             '-' => {
@@ -69,7 +75,7 @@ impl<'a> TokenStream<'a> {
         }
     }
 
-    pub fn next_num(&mut self) -> Option<Token<'a>> {
+    pub fn next_num(&mut self) -> Token<'a> {
         let mut sign = 1;
         let mut num = 0_i64;
         let mut is_first = true;
@@ -101,10 +107,12 @@ impl<'a> TokenStream<'a> {
             }
         }
         let token = Token::new(TokenVal::Int(sign * num), pos);
-        Some(token)
+        self.eof_pos.lineno = pos.lineno;
+        self.eof_pos.offset = pos.offset + pos.length;
+        token
     }
 
-    pub fn next_name(&mut self) -> Option<Token<'a>> {
+    pub fn next_name(&mut self) -> Token<'a> {
         let begin_offset = self.cur_ch_offset;
         let mut bytes_cnt = 0;
         let mut pos = TokenPos {
@@ -130,7 +138,14 @@ impl<'a> TokenStream<'a> {
         }
         let name = &self.origin[begin_offset..(begin_offset + bytes_cnt)];
         let token = Token::new(TokenVal::Name(name), pos);
-        Some(token)
+        self.eof_pos.lineno = pos.lineno;
+        self.eof_pos.offset = pos.offset + pos.length;
+        token
+    }
+
+    /// The origin source code.
+    pub fn origin(&self) -> &'a str {
+        self.origin
     }
 
     // Peek some characters if we can.
@@ -176,6 +191,8 @@ impl<'a> TokenStream<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::ts::TokenKind;
+
     use super::*;
 
     fn test_token_stream(source: &str, tokens: &[(u32, u32, u32, TokenVal)]) {
@@ -183,21 +200,23 @@ mod tests {
         for (index, token) in tokens.iter().enumerate() {
             let pos = TokenPos { lineno: token.0, offset: token.1, length: token.2 };
             let token = Token::new(token.3.clone(), pos);
-            let got_token = token_stream.next().unwrap();
+            let got_token = token_stream.next();
             assert_eq!(got_token, token, "Check the {} token.", index);
         }
         let got_token = token_stream.next();
-        assert_eq!(got_token, None, "Check the last, which should be None.");
+        assert_eq!(got_token.kind(), TokenKind::Eof, "Check the last, which should be None.");
     }
 
     #[test]
     fn basic() {
         test_token_stream("1", &[
             (1, 1, 1, TokenVal::Int(1)),
+            (1, 2, 0, TokenVal::Eof),
         ]);
 
         test_token_stream("-1", &[
             (1, 1, 2, TokenVal::Int(-1)),
+            (1, 3, 0, TokenVal::Eof),
         ]);
 
         test_token_stream("(+ 1 20)\n", &[
@@ -206,6 +225,7 @@ mod tests {
             (1, 4, 1, TokenVal::Int(1)),
             (1, 6, 2, TokenVal::Int(20)),
             (1, 8, 1, TokenVal::Rparam),
+            (1, 9, 0, TokenVal::Eof),
         ]);
     }
 
@@ -220,6 +240,7 @@ mod tests {
             (1, 14, 1, TokenVal::Rparam),
             (1, 16, 3, TokenVal::Name("zip")),
             (1, 19, 1, TokenVal::Rparam),
+            (1, 20, 0, TokenVal::Eof),
         ]);
     }
 }
