@@ -2,6 +2,7 @@
 pub enum Value {
     Int(i64),
     Bool(bool),
+    Null,
 }
 
 impl Value {
@@ -9,6 +10,7 @@ impl Value {
         match self {
             Self::Int(val) => format!("{}", val),
             Self::Bool(val) => format!("{}", val),
+            Self::Null => "null".to_string(),
         }
     }
 
@@ -16,6 +18,7 @@ impl Value {
         match self {
             Value::Int(_) => ValueKind::Int,
             Value::Bool(_) => ValueKind::Bool,
+            Value::Null => ValueKind::Null,
         }
     }
 
@@ -37,6 +40,7 @@ impl Value {
 pub enum ValueKind {
     Int,
     Bool,
+    Null,
 }
 
 impl ValueKind {
@@ -44,6 +48,7 @@ impl ValueKind {
         match self {
             Self::Int => "Int",
             Self::Bool => "Bool",
+            Self::Null => "Null",
         }
     }
 }

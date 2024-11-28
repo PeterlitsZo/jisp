@@ -32,8 +32,12 @@ def e2e_unit(group, index, case):
         want_error = False
     elif type(case) is dict:
         code = case['code']
-        wanted = case['wanted_error']
-        want_error = True
+        if 'wanted_error' in case:
+            wanted = case['wanted_error']
+            want_error = True
+        else:
+            wanted = case['wanted_result']
+            want_error = False
 
     e2e_process = subprocess.run(["./target/release/jisp", "run", f"--code={code}"], capture_output=True)
     if not want_error and e2e_process.returncode != 0:

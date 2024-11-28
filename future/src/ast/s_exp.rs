@@ -22,7 +22,7 @@ impl<'a> SExp<'a> {
         }
     }
 
-    pub fn as_name(&self) -> Option<&str> {
+    pub fn as_name(&self) -> Option<&'a str> {
         match self {
             Self::Name(name) => Some(name),
             _ => None,

@@ -1,54 +1,67 @@
+use std::{cell::RefCell, collections::HashMap};
+
 use crate::{asm::{Asm, AsmStat}, ast::{Ast, SExp, SExpKind}, error::Error};
+
+use super::AsmFn;
 
 pub struct AsmBuilder<'a> {
     ast: Ast<'a>,
+    name_idx: RefCell<HashMap<&'a str, u32>>,
 }
 
 impl<'a> AsmBuilder<'a> {
     /// Create a new [AsmBuilder] from [Ast].
     pub fn new(ast: Ast<'a>) -> Self {
-        Self { ast }
+        Self { ast, name_idx: RefCell::new(HashMap::new()) }
     }
 
     /// Consume self and return a built [Asm].
     pub fn build(self) -> Result<Asm, Error<'static>> {
-        let mut asm = Asm::new();
+        let mut asm_fn = AsmFn::new();
         let mut is_first_s_exp = true;
-        for s_exp in self.ast.s_exps() {
-            Self::build_s_exp(&mut asm, s_exp)?;
+        let s_exps = self.ast.s_exps();
+        for s_exp in s_exps {
             if is_first_s_exp {
                 is_first_s_exp = false;
             } else {
-                asm.push_stat(AsmStat::Pop);
+                asm_fn.push_stat(AsmStat::Pop);
             }
+            self.build_s_exp(&mut asm_fn, s_exp)?;
         }
-        asm.push_stat(AsmStat::Ret);
+        asm_fn.push_stat(AsmStat::Ret);
+
+        let mut asm = Asm::new();
+        asm.push_fn(asm_fn);
         Ok(asm)
     }
 
-    fn build_s_exp(asm: &mut Asm, s_exp: &SExp<'a>) -> Result<(), Error<'static>> {
+    fn build_s_exp<'s>(&'s self, asm_fn: &mut AsmFn, s_exp: &'s SExp<'a>) -> Result<(), Error<'static>> {
         match s_exp.kind() {
-            SExpKind::Int => Self::build_int(asm, s_exp)?,
-            SExpKind::List => Self::build_list(asm, s_exp)?,
+            SExpKind::Int => self.build_int(asm_fn, s_exp)?,
+            SExpKind::List => self.build_list(asm_fn, s_exp)?,
             SExpKind::Name => {
+                if let Some(idx) = self.name_idx.borrow().get(s_exp.as_name().unwrap()) {
+                    asm_fn.push_stat(AsmStat::Load { idx: *idx });
+                    return Ok(())
+                }
                 match s_exp.as_name().unwrap() {
-                    "true" => asm.push_stat(AsmStat::PushBool { val: true }),
-                    "false" => asm.push_stat(AsmStat::PushBool { val: false }),
-                    _ => return Err(Error::todo("Expected true or false.")),
+                    "true" => asm_fn.push_stat(AsmStat::PushBool { val: true }),
+                    "false" => asm_fn.push_stat(AsmStat::PushBool { val: false }),
+                    _ => return Err(Error::todo("Expected variable, 'true' or 'false'.")),
                 }
             }
         }
         Ok(())
     }
 
-    fn build_int(asm: &mut Asm, s_exp: &SExp<'a>) -> Result<(), Error<'static>> {
+    fn build_int(&self, asm_fn: &mut AsmFn, s_exp: &SExp<'a>) -> Result<(), Error<'static>> {
         let val = s_exp.as_int().unwrap();
-        asm.push_stat(AsmStat::PushInt { val });
+        asm_fn.push_stat(AsmStat::PushInt { val });
         Ok(())
     }
 
-    fn build_list(asm: &mut Asm, s_exp: &SExp<'a>) -> Result<(), Error<'static>> {
-        let lst = s_exp.as_list().unwrap();
+    fn build_list<'s>(&'s self, asm_fn: &mut AsmFn, s_exp: &'s SExp<'a>) -> Result<(), Error<'static>> {
+        let lst: &'s [SExp<'a>] = s_exp.as_list().unwrap();
         if lst.is_empty() {
             return Err(Error::todo("Unexpected empty list."))
         }
@@ -63,7 +76,11 @@ impl<'a> AsmBuilder<'a> {
         };
 
         #[derive(Clone, Copy)]
-        enum Op { Add, Sub, Mul, Div, Mod, Eq, Ne, Lt, Le, Gt, Ge }
+        enum Op {
+            Add, Sub, Mul, Div, Mod,
+            Eq, Ne, Lt, Le, Gt, Ge,
+            Let,
+        }
         let op = match name {
             "+" => Op::Add,
             "-" => Op::Sub,
@@ -76,6 +93,7 @@ impl<'a> AsmBuilder<'a> {
             "<=" => Op::Le,
             ">" => Op::Gt,
             ">=" => Op::Ge,
+            "let" => Op::Let,
             _ => return Err(Error::todo(format!(
                 "Unexpected name for list's first token: {:?}.",
                 name
@@ -83,27 +101,27 @@ impl<'a> AsmBuilder<'a> {
         };
 
         match (op, lst.len() - 1) {
-            (Op::Add, 0) => asm.push_stat(AsmStat::PushInt { val: 0 }),
+            (Op::Add, 0) => asm_fn.push_stat(AsmStat::PushInt { val: 0 }),
             (Op::Sub, 0) => return Err(Error::todo(
                 "Unexpected args number 0.",
             )),
-            (Op::Mul, 0) => asm.push_stat(AsmStat::PushInt { val: 1 }),
+            (Op::Mul, 0) => asm_fn.push_stat(AsmStat::PushInt { val: 1 }),
             (Op::Div, 0) => return Err(Error::todo(
                 "Unexpected args number 0.",
             )),
             (Op::Sub, 1) => {
-                asm.push_stat(AsmStat::PushInt { val: 0 });
-                Self::build_s_exp(asm, &lst[1])?;
-                asm.push_stat(AsmStat::Sub);
+                asm_fn.push_stat(AsmStat::PushInt { val: 0 });
+                self.build_s_exp(asm_fn, &lst[1])?;
+                asm_fn.push_stat(AsmStat::Sub);
             }
             (Op::Div, 1) => {
-                asm.push_stat(AsmStat::PushInt { val: 1 });
-                Self::build_s_exp(asm, &lst[1])?;
-                asm.push_stat(AsmStat::Div);
+                asm_fn.push_stat(AsmStat::PushInt { val: 1 });
+                self.build_s_exp(asm_fn, &lst[1])?;
+                asm_fn.push_stat(AsmStat::Div);
             },
             (Op::Mod | Op::Eq | Op::Ne | Op::Lt | Op::Le | Op::Gt | Op::Ge, 2) => {
-                Self::build_s_exp(asm, &lst[1])?;
-                Self::build_s_exp(asm, &lst[2])?;
+                self.build_s_exp(asm_fn, &lst[1])?;
+                self.build_s_exp(asm_fn, &lst[2])?;
                 let stat = match op {
                     Op::Mod => AsmStat::Mod,
                     Op::Eq => AsmStat::Eq,
@@ -114,7 +132,22 @@ impl<'a> AsmBuilder<'a> {
                     Op::Ge => AsmStat::Ge,
                     _ => panic!("unexpected op"),
                 };
-                asm.push_stat(stat);
+                asm_fn.push_stat(stat);
+            }
+            (Op::Let, 2) => {
+                if let Some(name) = lst[1].as_name() {
+                    self.name_idx.borrow_mut().insert(name, asm_fn.locals());
+                } else {
+                    return Err(Error::todo(format!(
+                        "The 'let' s-exp's 2nd argument should be a symbol, got unexpected {}.",
+                        lst[1].kind().display()
+                    )))
+                }
+                self.build_s_exp(asm_fn, &lst[2])?;
+                asm_fn.push_stat(AsmStat::Store { idx: asm_fn.locals() });
+                asm_fn.push_stat(AsmStat::PushNull);
+
+                asm_fn.set_locals(asm_fn.locals() + 1);
             }
             (Op::Add | Op::Sub | Op::Mul | Op::Div, _) => {
                 let mut is_first = true;
@@ -126,11 +159,11 @@ impl<'a> AsmBuilder<'a> {
                     _ => panic!("unexpected op"),
                 };
                 for s_exp in &lst[1..] {
-                    Self::build_s_exp(asm, s_exp)?;
+                    self.build_s_exp(asm_fn, s_exp)?;
                     if is_first {
                         is_first = false;
                     } else {
-                        asm.push_stat(stat);
+                        asm_fn.push_stat(stat);
                     }
                 }
             }
@@ -146,7 +179,7 @@ impl<'a> AsmBuilder<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ast::AstBuilder, ts::TokenStream};
+    use crate::{asm::AsmFn, ast::AstBuilder, ts::TokenStream};
 
     use super::*;
 
@@ -162,10 +195,32 @@ mod tests {
     #[test]
     fn compare() {
         test_asm_builder("(== true true)", Asm::from([
-            AsmStat::PushBool { val: true },
-            AsmStat::PushBool { val: true },
-            AsmStat::Eq,
-            AsmStat::Ret,
+            AsmFn::from(0, [
+                AsmStat::PushBool { val: true },
+                AsmStat::PushBool { val: true },
+                AsmStat::Eq,
+                AsmStat::Ret,
+            ])
+        ]));
+    }
+
+    #[test]
+    fn variable() {
+        test_asm_builder("(let a 1) (let b 2) (+ a b)", Asm::from([
+            AsmFn::from(2, [
+                AsmStat::PushInt { val: 1 },
+                AsmStat::Store { idx: 0 },
+                AsmStat::PushNull,
+                AsmStat::Pop,
+                AsmStat::PushInt { val: 2 },
+                AsmStat::Store { idx: 1 },
+                AsmStat::PushNull,
+                AsmStat::Pop,
+                AsmStat::Load { idx: 0 },
+                AsmStat::Load { idx: 1 },
+                AsmStat::Add,
+                AsmStat::Ret,
+            ])
         ]));
     }
 }

@@ -4,12 +4,15 @@
 - DONE Support add, sub, times, div and rem.
 - DONE Support compare.
 - DONE Support boolean.
-- Support big number.
+- DONE Support variable.
 - DONE Support good error struct.
+- Support big number.
 - Support comments.
 - Support multi-lines strings.
 - Support array.
 - Support map.
+- Support function by `fn`.
+- Support call Rust function.
 - Support easy document functions:
   ```json
   (doc (h1 null "Hello world")
@@ -23,3 +26,4 @@
   ```
 - Support REPL.
 - Remove all TODO error.
+- Rewrite the project totally.

@@ -14,7 +14,9 @@ impl Runner {
 
     /// Run and return the [Value].
     pub fn run(mut self) -> Result<Value, Error<'static>> {
+        let mut locals = vec![Value::Null; self.bytecode.locals() as usize];
         let bytes = self.bytecode.bytes();
+
         loop {
             let op = Op::from_byte(bytes[self.pc]).unwrap();
             let new_bad_value_type = |a: &Value, b: &Value| {
@@ -46,9 +48,28 @@ impl Runner {
                     };
                     self.stack.push(Value::Bool(val));
                 }
+                Op::PushNull => {
+                    self.stack.push(Value::Null);
+                }
                 Op::Pop => {
                     self.stack.pop().unwrap();
                 }
+
+                Op::Load => {
+                    let idx = &bytes[self.pc+1..self.pc+5];
+                    let idx = u32::from_le_bytes(idx.try_into().unwrap());
+                    self.stack.push(locals[idx as usize].clone());
+                }
+                Op::Store => {
+                    let idx = &bytes[self.pc+1..self.pc+5];
+                    let idx = u32::from_le_bytes(idx.try_into().unwrap());
+                    locals[idx as usize] = self.stack.pop().unwrap();
+                }
+
+                Op::Ret => {
+                    return Ok(self.stack.last().unwrap().clone());
+                }
+
                 Op::Add => {
                     let b = self.stack.pop().unwrap();
                     let a = self.stack.pop().unwrap();
@@ -104,6 +125,7 @@ impl Runner {
                     };
                     self.stack.push(result);
                 },
+
                 Op::Eq => {
                     let b = self.stack.pop().unwrap();
                     let a = self.stack.pop().unwrap();
@@ -176,9 +198,6 @@ impl Runner {
                     };
                     self.stack.push(result);
                 }
-                Op::Ret => {
-                    return Ok(self.stack.last().unwrap().clone());
-                }
             }
             self.pc += op.op_len();
         }
@@ -187,12 +206,14 @@ impl Runner {
 
 #[cfg(test)]
 mod tests {
-    use crate::{asm::{Asm, AsmStat}, bc::BytecodeBuilder};
+    use crate::{asm::{Asm, AsmFn, AsmStat}, bc::BytecodeBuilder};
 
     use super::*;
 
     fn test_runner(asm_stats: &[AsmStat], wanted: Value) {
-        let asm = Asm::from(asm_stats);
+        let asm = Asm::from([
+            AsmFn::from(0, asm_stats)
+        ]);
         let bc_builder = BytecodeBuilder::new(asm);
         let bc = bc_builder.build();
         let runner = Runner::new(bc);
