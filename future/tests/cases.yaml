@@ -46,6 +46,7 @@ case_groups:
   - ['(== true false)', 'false']
   - ['(!= true false)', 'true']
   - ['(!= false false)', 'false']
+  - ['(== null null)', 'true']
 - name: syntax error
   cases:
   - code: '(+ 1 1'
@@ -66,6 +67,7 @@ case_groups:
 - name: if statement
   cases:
   - ['(if (== 2 1) 1 (* 2 1))', '2']
+  - ['(if (== 2 1) 1)', 'null']
   - ['(let n 5) (if (== n 1) 1 (* n (- n 1)))', '20']
 - name: string
   cases:

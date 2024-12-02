@@ -55,6 +55,29 @@ impl Runner {
                     self.stack.pop().unwrap();
                 }
 
+                Op::Jump => {
+                    let idx = &bytes[self.pc+1..self.pc+5];
+                    let idx = u32::from_le_bytes(idx.try_into().unwrap());
+                    self.pc = idx as usize;
+                    continue;
+                }
+                Op::JumpIfTrue => {
+                    let idx = &bytes[self.pc+1..self.pc+5];
+                    let idx = u32::from_le_bytes(idx.try_into().unwrap());
+                    if self.stack.pop().unwrap().as_bool().unwrap() {
+                        self.pc = idx as usize;
+                        continue;
+                    }
+                }
+                Op::JumpIfFalse => {
+                    let idx = &bytes[self.pc+1..self.pc+5];
+                    let idx = u32::from_le_bytes(idx.try_into().unwrap());
+                    if !self.stack.pop().unwrap().as_bool().unwrap() {
+                        self.pc = idx as usize;
+                        continue;
+                    }
+                }
+
                 Op::Load => {
                     let idx = &bytes[self.pc+1..self.pc+5];
                     let idx = u32::from_le_bytes(idx.try_into().unwrap());

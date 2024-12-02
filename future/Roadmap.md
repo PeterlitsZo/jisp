@@ -14,7 +14,7 @@
 - Support function by `fn`.
 - Support call Rust function.
 - Support easy document functions:
-  ```json
+  ```lisp
   (doc (h1 null "Hello world")
        (p null "This is a paragraph.")
        (p null """

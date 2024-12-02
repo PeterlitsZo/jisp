@@ -1,3 +1,5 @@
+use crate::asm::AsmStatKind;
+
 pub struct Bytecode {
     locals: u32,
     bytes: Vec<u8>,
@@ -42,6 +44,10 @@ pub enum Op {
     PushNull,
     Pop,
 
+    Jump,
+    JumpIfTrue,
+    JumpIfFalse,
+
     Load,
     Store,
 
@@ -66,6 +72,10 @@ impl Op {
     const PUSH_BOOL: u8 = 0x01;
     const PUSH_NULL: u8 = 0x02;
     const POP: u8 = 0x03;
+
+    const JUMP: u8 = 0x28;
+    const JUMP_IF_TRUE: u8 = 0x29;
+    const JUMP_IF_FALSE: u8 = 0x2a;
 
     const LOAD: u8 = 0x20;
     const STORE: u8 = 0x21;
@@ -92,6 +102,10 @@ impl Op {
             Self::PushNull => "PUSH_NULL",
             Self::Pop => "POP",
 
+            Self::Jump => "JUMP",
+            Self::JumpIfTrue => "JUMP_IF_TRUE",
+            Self::JumpIfFalse => "JUMP_IF_FALSE",
+
             Self::Load => "LOAD",
             Self::Store => "STORE",
 
@@ -112,12 +126,49 @@ impl Op {
         }
     }
 
+    pub fn from_asm_stat_kind(kind: AsmStatKind) -> Option<Self> {
+        match kind {
+            AsmStatKind::PushInt => Some(Self::PushInt),
+            AsmStatKind::PushBool => Some(Self::PushBool),
+            AsmStatKind::PushNull => Some(Self::PushNull),
+            AsmStatKind::Pop => Some(Self::Pop),
+
+            AsmStatKind::Jump => Some(Self::Jump),
+            AsmStatKind::JumpIfTrue => Some(Self::JumpIfTrue),
+            AsmStatKind::JumpIfFalse => Some(Self::JumpIfFalse),
+
+            AsmStatKind::Load => Some(Self::Load),
+            AsmStatKind::Store => Some(Self::Store),
+
+            AsmStatKind::Ret => Some(Self::Ret),
+
+            AsmStatKind::Add => Some(Self::Add),
+            AsmStatKind::Sub => Some(Self::Sub),
+            AsmStatKind::Mul => Some(Self::Mul),
+            AsmStatKind::Div => Some(Self::Div),
+            AsmStatKind::Mod => Some(Self::Mod),
+
+            AsmStatKind::Eq => Some(Self::Eq),
+            AsmStatKind::Ne => Some(Self::Ne),
+            AsmStatKind::Lt => Some(Self::Lt),
+            AsmStatKind::Le => Some(Self::Le),
+            AsmStatKind::Gt => Some(Self::Gt),
+            AsmStatKind::Ge => Some(Self::Ge),
+
+            _ => None,
+        }
+    }
+
     pub fn from_byte(byte: u8) -> Option<Self> {
         match byte {
             Self::PUSH_INT => Some(Self::PushInt),
             Self::PUSH_BOOL => Some(Self::PushBool),
             Self::PUSH_NULL => Some(Self::PushNull),
             Self::POP => Some(Self::Pop),
+
+            Self::JUMP => Some(Self::Jump),
+            Self::JUMP_IF_TRUE => Some(Self::JumpIfTrue),
+            Self::JUMP_IF_FALSE => Some(Self::JumpIfFalse),
 
             Self::LOAD => Some(Self::Load),
             Self::STORE => Some(Self::Store),
@@ -148,6 +199,10 @@ impl Op {
             Self::PushNull => Self::PUSH_NULL,
             Self::Pop => Self::POP,
 
+            Self::Jump => Self::JUMP,
+            Self::JumpIfTrue => Self::JUMP_IF_TRUE,
+            Self::JumpIfFalse => Self::JUMP_IF_FALSE,
+
             Self::Load => Self::LOAD,
             Self::Store => Self::STORE,
 
@@ -173,6 +228,8 @@ impl Op {
             Self::PushInt => 9,
             Self::PushBool => 2,
             Self::PushNull | Self::Pop => 1,
+
+            Self::Jump | Self::JumpIfTrue | Self::JumpIfFalse => 5,
 
             Self::Load | Self::Store => 5,
 

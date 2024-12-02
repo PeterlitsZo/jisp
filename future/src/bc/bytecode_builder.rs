@@ -1,4 +1,6 @@
-use crate::{asm::{Asm, AsmStat}, bc::{Bytecode, Op}};
+use std::collections::BTreeMap;
+
+use crate::{asm::{Asm, AsmStat, AsmStatKind}, bc::{Bytecode, Op}};
 
 pub struct BytecodeBuilder {
     asm: Asm,
@@ -14,6 +16,16 @@ impl BytecodeBuilder {
     pub fn build(self) -> Bytecode {
         let mut bc = Bytecode::new();
         bc.set_locals(self.asm.fns()[0].locals());
+        let mut label_idx = BTreeMap::new();
+        let mut cur_idx = 0;
+        for stat in self.asm.fns()[0].stats() {
+            if stat.kind() == AsmStatKind::Label {
+                let label = stat.as_label().unwrap();
+                label_idx.insert(label, cur_idx as u32);
+            } else {
+                cur_idx += Op::from_asm_stat_kind(stat.kind()).unwrap().op_len();
+            }
+        }
         for stat in self.asm.fns()[0].stats() {
             match stat {
                 AsmStat::PushInt { val } => {
@@ -26,6 +38,23 @@ impl BytecodeBuilder {
                 },
                 AsmStat::PushNull => bc.push_byte(Op::PushNull.byte()),
                 AsmStat::Pop => bc.push_byte(Op::Pop.byte()),
+
+                AsmStat::Label { .. } => (),
+                AsmStat::Jump { label } => {
+                    bc.push_byte(Op::Jump.byte());
+                    let idx = label_idx.get(label).unwrap();
+                    bc.push_bytes(&idx.to_le_bytes());
+                },
+                AsmStat::JumpIfTrue { label } => {
+                    bc.push_byte(Op::JumpIfTrue.byte());
+                    let idx = label_idx.get(label).unwrap();
+                    bc.push_bytes(&idx.to_le_bytes());
+                },
+                AsmStat::JumpIfFalse { label } => {
+                    bc.push_byte(Op::JumpIfFalse.byte());
+                    let idx = label_idx.get(label).unwrap();
+                    bc.push_bytes(&idx.to_le_bytes());
+                },
 
                 AsmStat::Load { idx } => {
                     bc.push_byte(Op::Load.byte());

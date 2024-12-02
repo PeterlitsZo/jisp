@@ -1,25 +1,27 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{asm::{Asm, AsmStat}, ast::{Ast, SExp, SExpKind}, error::Error};
 
-use super::AsmFn;
+use super::{Label, AsmFn};
 
 pub struct AsmBuilder<'a> {
-    ast: Ast<'a>,
+    ast: Rc<Ast<'a>>,
     name_idx: RefCell<HashMap<&'a str, u32>>,
+    label_cnt: u32,
 }
 
 impl<'a> AsmBuilder<'a> {
     /// Create a new [AsmBuilder] from [Ast].
     pub fn new(ast: Ast<'a>) -> Self {
-        Self { ast, name_idx: RefCell::new(HashMap::new()) }
+        Self { ast: Rc::new(ast), name_idx: RefCell::new(HashMap::new()), label_cnt: 0 }
     }
 
     /// Consume self and return a built [Asm].
-    pub fn build(self) -> Result<Asm, Error<'static>> {
+    pub fn build(mut self) -> Result<Asm, Error<'static>> {
         let mut asm_fn = AsmFn::new();
         let mut is_first_s_exp = true;
-        let s_exps = self.ast.s_exps();
+        let cloned_ast = self.ast.clone();
+        let s_exps = cloned_ast.s_exps();
         for s_exp in s_exps {
             if is_first_s_exp {
                 is_first_s_exp = false;
@@ -35,7 +37,7 @@ impl<'a> AsmBuilder<'a> {
         Ok(asm)
     }
 
-    fn build_s_exp<'s>(&'s self, asm_fn: &mut AsmFn, s_exp: &'s SExp<'a>) -> Result<(), Error<'static>> {
+    fn build_s_exp<'s>(&'s mut self, asm_fn: &mut AsmFn, s_exp: &'s SExp<'a>) -> Result<(), Error<'static>> {
         match s_exp.kind() {
             SExpKind::Int => self.build_int(asm_fn, s_exp)?,
             SExpKind::List => self.build_list(asm_fn, s_exp)?,
@@ -60,7 +62,7 @@ impl<'a> AsmBuilder<'a> {
         Ok(())
     }
 
-    fn build_list<'s>(&'s self, asm_fn: &mut AsmFn, s_exp: &'s SExp<'a>) -> Result<(), Error<'static>> {
+    fn build_list<'s>(&'s mut self, asm_fn: &mut AsmFn, s_exp: &'s SExp<'a>) -> Result<(), Error<'static>> {
         let lst: &'s [SExp<'a>] = s_exp.as_list().unwrap();
         if lst.is_empty() {
             return Err(Error::todo("Unexpected empty list."))
@@ -80,6 +82,7 @@ impl<'a> AsmBuilder<'a> {
             Add, Sub, Mul, Div, Mod,
             Eq, Ne, Lt, Le, Gt, Ge,
             Let,
+            If,
         }
         let op = match name {
             "+" => Op::Add,
@@ -94,6 +97,7 @@ impl<'a> AsmBuilder<'a> {
             ">" => Op::Gt,
             ">=" => Op::Ge,
             "let" => Op::Let,
+            "if" => Op::If,
             _ => return Err(Error::todo(format!(
                 "Unexpected name for list's first token: {:?}.",
                 name
@@ -149,6 +153,30 @@ impl<'a> AsmBuilder<'a> {
 
                 asm_fn.set_locals(asm_fn.locals() + 1);
             }
+            (Op::If, 3) => {
+                let false_part = self.gen_label();
+                let end = self.gen_label();
+
+                self.build_s_exp(asm_fn, &lst[1])?;
+                asm_fn.push_stat(AsmStat::JumpIfFalse { label: false_part.clone() });
+                self.build_s_exp(asm_fn, &lst[2])?;
+                asm_fn.push_stat(AsmStat::Jump { label: end.clone() });
+                asm_fn.push_stat(AsmStat::Label { label: false_part });
+                self.build_s_exp(asm_fn, &lst[3])?;
+                asm_fn.push_stat(AsmStat::Label { label: end });
+            }
+            (Op::If, 2) => {
+                let false_part = self.gen_label();
+                let end = self.gen_label();
+
+                self.build_s_exp(asm_fn, &lst[1])?;
+                asm_fn.push_stat(AsmStat::JumpIfFalse { label: false_part.clone() });
+                self.build_s_exp(asm_fn, &lst[2])?;
+                asm_fn.push_stat(AsmStat::Jump { label: end.clone() });
+                asm_fn.push_stat(AsmStat::Label { label: false_part });
+                asm_fn.push_stat(AsmStat::PushNull);
+                asm_fn.push_stat(AsmStat::Label { label: end });
+            }
             (Op::Add | Op::Sub | Op::Mul | Op::Div, _) => {
                 let mut is_first = true;
                 let stat = match op {
@@ -163,7 +191,7 @@ impl<'a> AsmBuilder<'a> {
                     if is_first {
                         is_first = false;
                     } else {
-                        asm_fn.push_stat(stat);
+                        asm_fn.push_stat(stat.clone());
                     }
                 }
             }
@@ -174,6 +202,12 @@ impl<'a> AsmBuilder<'a> {
             }
         }
         Ok(())
+    }
+
+    fn gen_label(&mut self) -> Label {
+        let result = Label::new(format!(".L{}", self.label_cnt));
+        self.label_cnt += 1;
+        result
     }
 }
 
