@@ -1,5 +1,5 @@
 /// One token of the source.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token<'a> {
     pos: TokenPos,
     val: TokenVal<'a>,
@@ -34,11 +34,12 @@ pub struct TokenPos {
     pub length: u32,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TokenVal<'a> {
     Lparam,
     Rparam,
     Int(i64),
+    Float(f64),
     Name(&'a str),
     Eof,
 }
@@ -48,8 +49,9 @@ impl<'a> TokenVal<'a> {
         match self {
             Self::Lparam => TokenKind::Lparam,
             Self::Rparam => TokenKind::Rparam,
-            Self::Int(_) => TokenKind::Int,
-            Self::Name(_) => TokenKind::Name,
+            Self::Int(..) => TokenKind::Int,
+            Self::Float(..) => TokenKind::Float,
+            Self::Name(..) => TokenKind::Name,
             Self::Eof => TokenKind::Eof,
         }
     }
@@ -57,6 +59,13 @@ impl<'a> TokenVal<'a> {
     pub fn as_int(&self) -> Option<i64> {
         match self {
             Self::Int(val) => Some(*val),
+            _ => None,
+        }
+    }
+
+    pub fn as_float(&self) -> Option<f64> {
+        match self {
+            Self::Float(val) => Some(*val),
             _ => None,
         }
     }
@@ -74,6 +83,7 @@ pub enum TokenKind {
     Lparam,
     Rparam,
     Int,
+    Float,
     Name,
     Eof,
 }
@@ -84,6 +94,7 @@ impl TokenKind {
             Self::Lparam => "LPARAM",
             Self::Rparam => "RPARAM",
             Self::Int => "INT",
+            Self::Float => "FLOAT",
             Self::Name => "NAME",
             Self::Eof => "EOF",
         }

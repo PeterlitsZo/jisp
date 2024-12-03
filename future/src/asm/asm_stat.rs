@@ -1,8 +1,9 @@
 use std::rc::Rc;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum AsmStat {
     PushInt { val: i64 },
+    PushFloat { val: f64 },
     PushBool { val: bool },
     PushNull,
     Pop,
@@ -36,6 +37,7 @@ impl AsmStat {
     pub fn kind(&self) -> AsmStatKind {
         match self {
             Self::PushInt { .. } => AsmStatKind::PushInt,
+            Self::PushFloat { .. } => AsmStatKind::PushFloat,
             Self::PushBool { .. } => AsmStatKind::PushBool,
             Self::PushNull { .. } => AsmStatKind::PushNull,
             Self::Pop => AsmStatKind::Pop,
@@ -82,6 +84,7 @@ impl Label {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum AsmStatKind {
     PushInt,
+    PushFloat,
     PushBool,
     PushNull,
     Pop,

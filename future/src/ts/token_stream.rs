@@ -63,7 +63,7 @@ impl<'a> TokenStream<'a> {
                 self.eof_pos.offset = pos.offset + pos.length;
                 token
             },
-            '0'..='9' => self.next_num(),
+            '.' | '0'..='9' => self.next_num(),
             '-' => {
                 if self.peek_ch_1.is_some_and(|c| c.is_ascii_digit()) {
                     self.next_num()
@@ -78,12 +78,16 @@ impl<'a> TokenStream<'a> {
     pub fn next_num(&mut self) -> Token<'a> {
         let mut sign = 1;
         let mut num = 0_i64;
+        let mut div = 1_i64;
+        let mut is_float = false;
         let mut is_first = true;
+
         let mut pos = TokenPos {
             lineno: self.cur_lineno,
             offset: self.cur_offset,
             length: 0
         };
+
         loop {
             let cur_ch = match self.peek_ch_0 {
                 None => break,
@@ -99,6 +103,14 @@ impl<'a> TokenStream<'a> {
                     self.consume();
                     pos.length += 1;
                     num = num * 10 + (c as i64) - ('0' as i64);
+                    if is_float {
+                        div *= 10;
+                    }
+                }
+                '.' => {
+                    self.consume();
+                    pos.length += 1;
+                    is_float = true;
                 }
                 _ => break,
             }
@@ -106,7 +118,12 @@ impl<'a> TokenStream<'a> {
                 is_first = false;
             }
         }
-        let token = Token::new(TokenVal::Int(sign * num), pos);
+
+        let token = if is_float {
+            Token::new(TokenVal::Float(sign as f64 * num as f64 / div as f64), pos)
+        } else {
+            Token::new(TokenVal::Int(sign * num), pos)
+        };
         self.eof_pos.lineno = pos.lineno;
         self.eof_pos.offset = pos.offset + pos.length;
         token
@@ -226,6 +243,14 @@ mod tests {
             (1, 6, 2, TokenVal::Int(20)),
             (1, 8, 1, TokenVal::Rparam),
             (1, 9, 0, TokenVal::Eof),
+        ]);
+    }
+
+    #[test]
+    fn floats() {
+        test_token_stream("1.0", &[
+            (1, 1, 3, TokenVal::Float(1.)),
+            (1, 4, 0, TokenVal::Eof),
         ]);
     }
 

@@ -1,6 +1,6 @@
 use super::AsmFn;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub struct Asm {
     fns: Vec<AsmFn>,
 }

@@ -40,6 +40,7 @@ impl Bytecode {
 #[derive(Debug, Clone, Copy)]
 pub enum Op {
     PushInt,
+    PushFloat,
     PushBool,
     PushNull,
     Pop,
@@ -69,9 +70,10 @@ pub enum Op {
 
 impl Op {
     const PUSH_INT: u8 = 0x00;
-    const PUSH_BOOL: u8 = 0x01;
-    const PUSH_NULL: u8 = 0x02;
-    const POP: u8 = 0x03;
+    const PUSH_FLOAT: u8 = 0x01;
+    const PUSH_BOOL: u8 = 0x02;
+    const PUSH_NULL: u8 = 0x03;
+    const POP: u8 = 0x04;
 
     const JUMP: u8 = 0x28;
     const JUMP_IF_TRUE: u8 = 0x29;
@@ -98,6 +100,7 @@ impl Op {
     pub fn display(&self) -> &'static str {
         match self {
             Self::PushInt => "PUSH_INT",
+            Self::PushFloat => "PUSH_FLOAT",
             Self::PushBool => "PUSH_BOOL",
             Self::PushNull => "PUSH_NULL",
             Self::Pop => "POP",
@@ -129,6 +132,7 @@ impl Op {
     pub fn from_asm_stat_kind(kind: AsmStatKind) -> Option<Self> {
         match kind {
             AsmStatKind::PushInt => Some(Self::PushInt),
+            AsmStatKind::PushFloat => Some(Self::PushFloat),
             AsmStatKind::PushBool => Some(Self::PushBool),
             AsmStatKind::PushNull => Some(Self::PushNull),
             AsmStatKind::Pop => Some(Self::Pop),
@@ -162,6 +166,7 @@ impl Op {
     pub fn from_byte(byte: u8) -> Option<Self> {
         match byte {
             Self::PUSH_INT => Some(Self::PushInt),
+            Self::PUSH_FLOAT => Some(Self::PushFloat),
             Self::PUSH_BOOL => Some(Self::PushBool),
             Self::PUSH_NULL => Some(Self::PushNull),
             Self::POP => Some(Self::Pop),
@@ -195,6 +200,7 @@ impl Op {
     pub fn byte(self) -> u8 {
         match self {
             Self::PushInt => Self::PUSH_INT,
+            Self::PushFloat => Self::PUSH_FLOAT,
             Self::PushBool => Self::PUSH_BOOL,
             Self::PushNull => Self::PUSH_NULL,
             Self::Pop => Self::POP,
@@ -226,6 +232,7 @@ impl Op {
     pub fn op_len(self) -> usize {
         match self {
             Self::PushInt => 9,
+            Self::PushFloat => 9,
             Self::PushBool => 2,
             Self::PushNull | Self::Pop => 1,
 

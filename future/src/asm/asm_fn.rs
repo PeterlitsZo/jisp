@@ -1,6 +1,6 @@
 use crate::asm::AsmStat;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub struct AsmFn {
     locals: u32,
     stats: Vec<AsmStat>,

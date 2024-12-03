@@ -34,6 +34,11 @@ impl Runner {
                     let val = i64::from_le_bytes(val.try_into().unwrap());
                     self.stack.push(Value::Int(val));
                 }
+                Op::PushFloat => {
+                    let val = &bytes[self.pc+1..self.pc+9];
+                    let val = f64::from_le_bytes(val.try_into().unwrap());
+                    self.stack.push(Value::Float(val));
+                }
                 Op::PushBool => {
                     let val = &bytes[self.pc+1];
                     let val = match *val {
@@ -100,6 +105,15 @@ impl Runner {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Int(a.as_int().unwrap() + b.as_int().unwrap())
                         }
+                        (ValueKind::Float, ValueKind::Float) => {
+                            Value::Float(a.as_float().unwrap() + b.as_float().unwrap())
+                        }
+                        (ValueKind::Int, ValueKind::Float) => {
+                            Value::Float(a.as_int().unwrap() as f64 + b.as_float().unwrap())
+                        }
+                        (ValueKind::Float, ValueKind::Int) => {
+                            Value::Float(a.as_float().unwrap() + b.as_int().unwrap() as f64)
+                        }
                         _ => return Err(new_bad_value_type(&a, &b))
                     };
                     self.stack.push(result);
@@ -110,6 +124,15 @@ impl Runner {
                     let result = match (a.kind(), b.kind()) {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Int(a.as_int().unwrap() - b.as_int().unwrap())
+                        }
+                        (ValueKind::Float, ValueKind::Float) => {
+                            Value::Float(a.as_float().unwrap() - b.as_float().unwrap())
+                        }
+                        (ValueKind::Int, ValueKind::Float) => {
+                            Value::Float(a.as_int().unwrap() as f64 - b.as_float().unwrap())
+                        }
+                        (ValueKind::Float, ValueKind::Int) => {
+                            Value::Float(a.as_float().unwrap() - b.as_int().unwrap() as f64)
                         }
                         _ => return Err(new_bad_value_type(&a, &b))
                     };
@@ -122,6 +145,15 @@ impl Runner {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Int(a.as_int().unwrap() * b.as_int().unwrap())
                         }
+                        (ValueKind::Float, ValueKind::Float) => {
+                            Value::Float(a.as_float().unwrap() * b.as_float().unwrap())
+                        }
+                        (ValueKind::Int, ValueKind::Float) => {
+                            Value::Float(a.as_int().unwrap() as f64 * b.as_float().unwrap())
+                        }
+                        (ValueKind::Float, ValueKind::Int) => {
+                            Value::Float(a.as_float().unwrap() * b.as_int().unwrap() as f64)
+                        }
                         _ => return Err(new_bad_value_type(&a, &b))
                     };
                     self.stack.push(result);
@@ -131,7 +163,16 @@ impl Runner {
                     let a = self.stack.pop().unwrap();
                     let result = match (a.kind(), b.kind()) {
                         (ValueKind::Int, ValueKind::Int) => {
-                            Value::Int(a.as_int().unwrap() / b.as_int().unwrap())
+                            Value::Float(a.as_int().unwrap() as f64 / b.as_int().unwrap() as f64)
+                        }
+                        (ValueKind::Float, ValueKind::Float) => {
+                            Value::Float(a.as_float().unwrap() / b.as_float().unwrap())
+                        }
+                        (ValueKind::Int, ValueKind::Float) => {
+                            Value::Float(a.as_int().unwrap() as f64 / b.as_float().unwrap())
+                        }
+                        (ValueKind::Float, ValueKind::Int) => {
+                            Value::Float(a.as_float().unwrap() / b.as_int().unwrap() as f64)
                         }
                         _ => return Err(new_bad_value_type(&a, &b))
                     };
@@ -156,8 +197,20 @@ impl Runner {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Bool(a.as_int().unwrap() == b.as_int().unwrap())
                         }
+                        (ValueKind::Float, ValueKind::Float) => {
+                            Value::Bool(a.as_float().unwrap() == b.as_float().unwrap())
+                        }
+                        (ValueKind::Int, ValueKind::Float) => {
+                            Value::Bool((a.as_int().unwrap() as f64) == b.as_float().unwrap())
+                        }
+                        (ValueKind::Float, ValueKind::Int) => {
+                            Value::Bool(a.as_float().unwrap() == (b.as_int().unwrap() as f64))
+                        }
                         (ValueKind::Bool, ValueKind::Bool) => {
                             Value::Bool(a.as_bool().unwrap() == b.as_bool().unwrap())
+                        }
+                        (ValueKind::Null, ValueKind::Null) => {
+                            Value::Bool(true)
                         }
                         _ => return Err(new_bad_value_type(&a, &b))
                     };
@@ -170,8 +223,20 @@ impl Runner {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Bool(a.as_int().unwrap() != b.as_int().unwrap())
                         }
+                        (ValueKind::Float, ValueKind::Float) => {
+                            Value::Bool(a.as_float().unwrap() != b.as_float().unwrap())
+                        }
+                        (ValueKind::Int, ValueKind::Float) => {
+                            Value::Bool((a.as_int().unwrap() as f64) != b.as_float().unwrap())
+                        }
+                        (ValueKind::Float, ValueKind::Int) => {
+                            Value::Bool(a.as_float().unwrap() != (b.as_int().unwrap() as f64))
+                        }
                         (ValueKind::Bool, ValueKind::Bool) => {
                             Value::Bool(a.as_bool().unwrap() != b.as_bool().unwrap())
+                        }
+                        (ValueKind::Null, ValueKind::Null) => {
+                            Value::Bool(false)
                         }
                         _ => return Err(new_bad_value_type(&a, &b))
                     };
@@ -184,6 +249,15 @@ impl Runner {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Bool(a.as_int().unwrap() < b.as_int().unwrap())
                         }
+                        (ValueKind::Float, ValueKind::Float) => {
+                            Value::Bool(a.as_float().unwrap() < b.as_float().unwrap())
+                        }
+                        (ValueKind::Int, ValueKind::Float) => {
+                            Value::Bool((a.as_int().unwrap() as f64) < b.as_float().unwrap())
+                        }
+                        (ValueKind::Float, ValueKind::Int) => {
+                            Value::Bool(a.as_float().unwrap() < (b.as_int().unwrap() as f64))
+                        }
                         _ => return Err(new_bad_value_type(&a, &b))
                     };
                     self.stack.push(result);
@@ -194,6 +268,15 @@ impl Runner {
                     let result = match (a.kind(), b.kind()) {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Bool(a.as_int().unwrap() <= b.as_int().unwrap())
+                        }
+                        (ValueKind::Float, ValueKind::Float) => {
+                            Value::Bool(a.as_float().unwrap() <= b.as_float().unwrap())
+                        }
+                        (ValueKind::Int, ValueKind::Float) => {
+                            Value::Bool((a.as_int().unwrap() as f64) <= b.as_float().unwrap())
+                        }
+                        (ValueKind::Float, ValueKind::Int) => {
+                            Value::Bool(a.as_float().unwrap() <= (b.as_int().unwrap() as f64))
                         }
                         _ => return Err(new_bad_value_type(&a, &b))
                     };
@@ -206,6 +289,15 @@ impl Runner {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Bool(a.as_int().unwrap() > b.as_int().unwrap())
                         }
+                        (ValueKind::Float, ValueKind::Float) => {
+                            Value::Bool(a.as_float().unwrap() > b.as_float().unwrap())
+                        }
+                        (ValueKind::Int, ValueKind::Float) => {
+                            Value::Bool((a.as_int().unwrap() as f64) > b.as_float().unwrap())
+                        }
+                        (ValueKind::Float, ValueKind::Int) => {
+                            Value::Bool(a.as_float().unwrap() > (b.as_int().unwrap() as f64))
+                        }
                         _ => return Err(new_bad_value_type(&a, &b))
                     };
                     self.stack.push(result);
@@ -216,6 +308,15 @@ impl Runner {
                     let result = match (a.kind(), b.kind()) {
                         (ValueKind::Int, ValueKind::Int) => {
                             Value::Bool(a.as_int().unwrap() >= b.as_int().unwrap())
+                        }
+                        (ValueKind::Float, ValueKind::Float) => {
+                            Value::Bool(a.as_float().unwrap() >= b.as_float().unwrap())
+                        }
+                        (ValueKind::Int, ValueKind::Float) => {
+                            Value::Bool((a.as_int().unwrap() as f64) >= b.as_float().unwrap())
+                        }
+                        (ValueKind::Float, ValueKind::Int) => {
+                            Value::Bool(a.as_float().unwrap() >= (b.as_int().unwrap() as f64))
                         }
                         _ => return Err(new_bad_value_type(&a, &b))
                     };

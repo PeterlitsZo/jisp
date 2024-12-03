@@ -1,6 +1,6 @@
 use super::SExp;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub struct Ast<'a> {
     s_exps: Vec<SExp<'a>>,
 }

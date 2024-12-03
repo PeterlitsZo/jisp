@@ -32,6 +32,10 @@ impl BytecodeBuilder {
                     bc.push_byte(Op::PushInt.byte());
                     bc.push_bytes(&val.to_le_bytes());
                 },
+                AsmStat::PushFloat { val } => {
+                    bc.push_byte(Op::PushFloat.byte());
+                    bc.push_bytes(&val.to_le_bytes());
+                }
                 AsmStat::PushBool { val } => {
                     bc.push_byte(Op::PushBool.byte());
                     bc.push_byte(if *val { 1 } else { 0 });

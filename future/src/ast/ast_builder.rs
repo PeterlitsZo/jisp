@@ -51,6 +51,9 @@ impl<'a> AstBuilder<'a> {
             TokenKind::Int => {
                 self.next_int()
             }
+            TokenKind::Float => {
+                self.next_float()
+            }
             _ => Err(Error::todo("Unexpected token.")),
         }
     }
@@ -87,6 +90,13 @@ impl<'a> AstBuilder<'a> {
         let t = &self.peek_token;
         let result = Ok(SExp::Int(t.val().as_int().unwrap()));
         self.skip(TokenKind::Int)?;
+        result
+    }
+
+    fn next_float(&mut self) -> Result<SExp<'a>, Error<'static>> {
+        let t = &self.peek_token;
+        let result = Ok(SExp::Float(t.val().as_float().unwrap()));
+        self.skip(TokenKind::Float)?;
         result
     }
 }

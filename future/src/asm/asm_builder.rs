@@ -40,6 +40,7 @@ impl<'a> AsmBuilder<'a> {
     fn build_s_exp<'s>(&'s mut self, asm_fn: &mut AsmFn, s_exp: &'s SExp<'a>) -> Result<(), Error<'static>> {
         match s_exp.kind() {
             SExpKind::Int => self.build_int(asm_fn, s_exp)?,
+            SExpKind::Float => self.build_float(asm_fn, s_exp)?,
             SExpKind::List => self.build_list(asm_fn, s_exp)?,
             SExpKind::Name => {
                 if let Some(idx) = self.name_idx.borrow().get(s_exp.as_name().unwrap()) {
@@ -59,6 +60,12 @@ impl<'a> AsmBuilder<'a> {
     fn build_int(&self, asm_fn: &mut AsmFn, s_exp: &SExp<'a>) -> Result<(), Error<'static>> {
         let val = s_exp.as_int().unwrap();
         asm_fn.push_stat(AsmStat::PushInt { val });
+        Ok(())
+    }
+
+    fn build_float(&self, asm_fn: &mut AsmFn, s_exp: &SExp<'a>) -> Result<(), Error<'static>> {
+        let val = s_exp.as_float().unwrap();
+        asm_fn.push_stat(AsmStat::PushFloat { val });
         Ok(())
     }
 
@@ -240,9 +247,9 @@ mod tests {
 
     #[test]
     fn variable() {
-        test_asm_builder("(let a 1) (let b 2) (+ a b)", Asm::from([
+        test_asm_builder("(let a 1.0) (let b 2) (+ a b)", Asm::from([
             AsmFn::from(2, [
-                AsmStat::PushInt { val: 1 },
+                AsmStat::PushFloat { val: 1.0 },
                 AsmStat::Store { idx: 0 },
                 AsmStat::PushNull,
                 AsmStat::Pop,

@@ -6,6 +6,8 @@ case_groups:
   - ['1', '1']
   - ['2', '2']
   - ['500', '500']
+  - ['-500', '-500']
+  - ['123456789', '123456789']
 - name: simple add and sub
   cases:
   - ['(+ -1 1)', '0']
@@ -14,6 +16,8 @@ case_groups:
   - ['(+ 100 250)', '350']
   - ['(+ 1 2 3 4 5)', '15']
   - ['(- 100 1)', '99']
+  - ['(- 10 5 2)', '3']
+  - ['(+ -10 5)', '-5']
 - name: complex add and sub
   cases:
   - ['(+)', '0']
@@ -22,15 +26,19 @@ case_groups:
   - ['(+ (+ 1 2) (+ 3 4 5))', '15']
   - ['(+ 1 1 (- 4 2))', '4']
   - ['(+ 5 (- 5 2 3) (- 13 13))', '5']
+  - ['(+ 1 2 3 (- 4 5))', '5']
 - name: times and div, rem
   cases:
   - ['(*)', '1']
   - ['(* 5)', '5']
-  - ['(/ 1)', '1']
+  - ['(/ 1)', '1.0']
   - ['(* 4 5 6)', '120']
-  - ['(/ 12 4)', '3']
+  - ['(/ 12 4)', '3.0']
   - ['(% 15 4)', '3']
-  - ['(+ (/ 12 4) (* 4 5))', '23']
+  - ['(+ (/ 12 4) (* 4 5))', '23.0']
+  - ['(* 2 3 4)', '24']
+  - ['(/ 100 5 2)', '10.0']
+  - ['(% 100 3)', '1']
 - name: compare
   cases:
   - ['(== (/ 12 4) (+ 1 2))', 'true']
@@ -47,38 +55,57 @@ case_groups:
   - ['(!= true false)', 'true']
   - ['(!= false false)', 'false']
   - ['(== null null)', 'true']
+  - ['(< 5 10)', 'true']
+  - ['(> 10 5)', 'true']
+  - ['(<= 5 5)', 'true']
+  - ['(>= 5 5)', 'true']
 - name: syntax error
   cases:
   - code: '(+ 1 1'
     wanted_error: |
       0001 | (+ 1 1
            |       ^ Syntax: Invalid syntax, maybe forgot ')'.
+  - code: '(let x 10'
+    wanted_error: |
+      0001 | (let x 10
+           |          ^ Syntax: Invalid syntax, maybe forgot ')'.
 - name: float
   cases:
   - ['5.0', '5.0']
+  - ['.1', '0.1']
   - ['(/ 1 2)', '0.5']
   - ['(/ 3 2)', '1.5']
   - ['(* (/ 3 2) 2)', '3.0']
   - ['(+ 0.1 0.2)', '0.30000000000000004'] # YES!
+  - ['(- 5.5 2.2)', '3.3']
+  - ['(* 2.5 4)', '10.0']
 - name: variable
   cases:
   - ['(let a 13) (let b 12) (+ a b)', '25']
-  - ['(let a (+ 4 5)) (let b (/ 21 7)) (- a b)', '6']
+  - ['(let a (+ 4 5)) (let b (/ 21 7)) (- a b)', '6.0']
+  - ['(let x 10) (let y 20) (* x y)', '200']
+  - ['(let x 5) (let y 3) (/ x y)', '1.6666666666666667']
 - name: if statement
   cases:
   - ['(if (== 2 1) 1 (* 2 1))', '2']
   - ['(if (== 2 1) 1)', 'null']
   - ['(let n 5) (if (== n 1) 1 (* n (- n 1)))', '20']
+  - ['(if (== 3 3) 10 20)', '10']
+  - ['(if (!= 3 3) 10 20)', '20']
 - name: string
   cases:
   - ['"hello world"', '"hello world"']
   - ['(let h "hello") (let w "world") (if (== 1 1) h w)', '"hello"']
+  - ['(let s "test") (if (== 2 2) s "fail")', '"test"']
+  - ['(let s1 "foo") (let s2 "bar") (+ s1 s2)', '"foobar"']
 - name: function
   cases:
   - ['(fn ret5 [] 5) (ret5)', '5']
   - ['(fn bar [] 3) (fn foo [] (+ (bar) 5)) (+ (bar) (foo))', '11']
-  - ['(fn add [x y] (+ a b)) (add 3 5)', '8']
+  - ['(fn add [x y] (+ x y)) (add 3 5)', '8']
   - ['(fn fac [x] (if (== x 0) 1 (* (fac (- x 1)) x))) (fac 5)', '120']
+  - ['(fn square [x] (* x x)) (square 4)', '16']
+  - ['(fn sum [a b c] (+ a b c)) (sum 1 2 3)', '6']
 - name: extend function
   cases:
   - code: '(x_fac 5)'
@@ -94,6 +121,16 @@ case_groups:
           }
       })
     wanted_result: '120'
+  - code: '(x_square 4)'
+    extend: |
+      register_xfn("x_square", |args: Vec<Value>| {
+          assert!(args.len() == 1);
+          match args[0] {
+              Value::Int(val) => Value::Int(val * val),
+              _ => panic!("unexpected value"),
+          }
+      })
+    wanted_result: '16'
 - name: do statement
   cases:
   - ['(do (+ 10 10) 5)', '5']
@@ -108,6 +145,10 @@ case_groups:
           0))
       (repeat 10 foo)
     wanted_result: '50'
+  - code: |
+      (fn bar [] 2)
+      (do (bar) (bar) (bar))
+    wanted_result: '2'
 - name: array
   cases:
   - ['(let a [1, 2, 3, 4, 5]) (get a [0])', '1']
@@ -116,3 +157,17 @@ case_groups:
       (let c ["hello" "world" [3 4 5]])
       [(get b [1]) (get b [2]) (get b [2 1])]
     wanted_result: '["world", [3, 4, 5], 4]'
+  - ['(let arr [10 20 30]) (get arr [2])', '30']
+  - ['(let arr [1 2 3 4 5]) (set arr [2] 99) (get arr [2])', '99']
+- name: Simple hex number
+  cases:
+  - ['0x0', '0']
+  - ['0x1', '1']
+  - ['0x10', '16']
+  - ['0x100', '256']
+  - ['0x1000', '4096']
+  - ['-0x1', '-1']
+  - ['-0x10', '-16']
+  - ['(+ -0x100 9)', '-247']
+  - ['0xABC', '2748']
+  - ['-0xABC', '-2748']
