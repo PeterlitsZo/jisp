@@ -1,0 +1,10 @@
+[package]
+name = "jisp"
+version = "0.1.0-dev"
+edition = "2021"
+authors = ["Peterlits Zo <peterlitszo@gmail.com>"]
+description = "Jisp: A Lisp-like language to deal with JSON"
+license = "UNKNOWN FOR NOW"
+
+[dependencies]
+indoc = "2.0.5"
