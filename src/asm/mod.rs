@@ -15,7 +15,7 @@ use builder::{AsmBuilder, IFuncBuilder};
 /// 
 /// It contains i-functions ([IFunc]) to run.
 #[derive(Debug, PartialEq)]
-struct Asm {
+pub(super) struct Asm {
     ifuncs: Vec<IFunc>,
 }
 
@@ -31,14 +31,14 @@ impl Asm {
 
     /// Build [Asm] from program.  Only for test.
     #[cfg(test)]
-    fn from_program(program: &str) -> Self {
+    pub(super) fn from_program(program: &str) -> Self {
         use program::Parser;
 
         Parser::new(program).parse()
     }
 
     /// Get the i-functions.
-    fn ifuncs(&self) -> &[IFunc] {
+    pub(super) fn ifuncs(&self) -> &[IFunc] {
         &self.ifuncs
     }
 }
@@ -47,7 +47,7 @@ impl Asm {
 /// 
 /// It contains the statments ([Stat]) to run.
 #[derive(Debug, PartialEq)]
-struct IFunc {
+pub(super) struct IFunc {
     stats: Vec<Stat>,
 }
 
@@ -62,14 +62,14 @@ impl IFunc {
     }
 
     /// Get the stats.
-    fn stats(&self) -> &[Stat] {
+    pub(super) fn stats(&self) -> &[Stat] {
         &self.stats
     }
 }
 
 /// The [Asm] statement.
 #[derive(Debug, PartialEq, Clone)]
-enum Stat {
+pub(super) enum Stat {
     /// Pop from the ifunc stack top and return the popped value from the
     /// running ifunc.
     Return,
