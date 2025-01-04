@@ -59,6 +59,8 @@ impl IFuncBuilder {
             Stat::Return => self.push_op(Op::Return),
 
             Stat::LoadNull => self.push_op(Op::LoadNull),
+
+            _ => unimplemented!(),
         }
     }
 

@@ -121,6 +121,16 @@ impl<'a> Parser<'a> {
             "RETURN" => self.ifunc_builder.push_stat(Stat::Return),
 
             "LOAD_NULL" => self.ifunc_builder.push_stat(Stat::LoadNull),
+            "LOAD_INT" => {
+                let val = tokens[1].as_int().unwrap();
+                self.ifunc_builder.push_stat(Stat::LoadInt(val))
+            }
+            "LOAD_FLOAT" => {
+                let val = tokens[1].as_float().unwrap();
+                self.ifunc_builder.push_stat(Stat::LoadFloat(val))
+            }
+
+            "POP" => self.ifunc_builder.push_stat(Stat::Pop),
 
             _ => panic!("unexpected op: {:?}", op),
         };
@@ -135,6 +145,9 @@ enum Token {
 
     /// The integer token.
     Int(i64),
+
+    /// The float token.
+    Float(f64),
 
     /// The `{` token.
     LBRACE,
@@ -157,6 +170,13 @@ impl Token {
             _ => None,
         }
     }
+
+    fn as_float(&self) -> Option<f64> {
+        match self {
+            Self::Float(val) => Some(*val),
+            _ => None,
+        }
+    }
 }
 
 /// The tokenizer for the ASM program.  The [Token] is produced by this.  It is
@@ -173,23 +193,51 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn next_number(&mut self) -> Token {
-        let mut number = 0_i64;
+        enum Mode { Int, Float }
 
-        let mut sign = 1_i64;
+        let mut buffer = String::new();
+        let mut mode = Mode::Int;
+
         if let Some('-') = self.source.peek() {
-            sign = -1;
+            buffer.push('-');
             self.source.next();
         }
 
         while let Some(c) = self.source.peek() {
             if c.is_digit(10) {
-                number = number * 10 + c.to_digit(10).unwrap() as i64;
+                buffer.push(*c);
                 self.source.next().unwrap();
             } else {
                 break;
             }
         }
-        Token::Int(sign * number)
+
+        if let Some('.') = self.source.peek() {
+            buffer.push('.');
+            self.source.next();
+
+            while let Some(c) = self.source.peek() {
+                if c.is_digit(10) {
+                    buffer.push(*c);
+                    self.source.next().unwrap();
+                } else {
+                    break;
+                }
+            }
+
+            mode = Mode::Float;
+        }
+
+        match mode {
+            Mode::Int => {
+                let number = buffer.parse::<i64>().unwrap();
+                Token::Int(number)
+            }
+            Mode::Float => {
+                let number = buffer.parse::<f64>().unwrap();
+                Token::Float(number)
+            }
+        }
     }
 
     fn next_name(&mut self) -> Token {
@@ -256,6 +304,12 @@ mod tests {
         let mut parser = Parser::new(indoc! {r#"
             ifunc 0 {
                 LOAD_NULL
+                POP
+                LOAD_NULL
+                POP
+                LOAD_INT        42
+                POP
+                LOAD_FLOAT      3.14
                 RETURN
             }
         "#});
@@ -265,6 +319,12 @@ mod tests {
             .push_ifunc_by(|mut ifunc_builder| {
                 ifunc_builder
                     .push_stat(Stat::LoadNull)
+                    .push_stat(Stat::Pop)
+                    .push_stat(Stat::LoadNull)
+                    .push_stat(Stat::Pop)
+                    .push_stat(Stat::LoadInt(42))
+                    .push_stat(Stat::Pop)
+                    .push_stat(Stat::LoadFloat(3.14))
                     .push_stat(Stat::Return)
                     .build()
             })
