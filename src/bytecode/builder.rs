@@ -59,14 +59,23 @@ impl IFuncBuilder {
             Stat::Return => self.push_op(Op::Return),
 
             Stat::LoadNull => self.push_op(Op::LoadNull),
+            Stat::LoadInt(val) => self.push_op_args(Op::LoadInt, &val.to_le_bytes()),
+            Stat::LoadFloat(val) => self.push_op_args(Op::LoadFloat, &val.to_le_bytes()),
 
-            _ => unimplemented!(),
+            Stat::Pop => self.push_op(Op::Pop),
         }
     }
 
     /// Push an opcode without arguments.
     fn push_op(&mut self, op: Op) -> &mut Self {
         self.ifunc.code.push(op.into_u8());
+        self
+    }
+
+    /// Push an opcode with arguments.
+    fn push_op_args(&mut self, op: Op, args: &[u8]) -> &mut Self {
+        self.ifunc.code.push(op.into_u8());
+        self.ifunc.code.extend(args);
         self
     }
 
@@ -92,6 +101,10 @@ mod tests {
         let asm = Asm::from_program(indoc! {r#"
             ifunc 0 {
                 LOAD_NULL
+                POP
+                LOAD_INT        42
+                POP
+                LOAD_FLOAT      3.14
                 RETURN
             }
         "#});
@@ -100,7 +113,14 @@ mod tests {
         assert_eq!(bytecode.ifuncs.len(), 1);
         assert_eq!(
             bytecode.ifuncs[0].code,
-            vec![Op::LoadNull.into_u8(), Op::Return.into_u8()]
+            vec![
+                Op::LoadNull.into_u8(),
+                Op::Pop.into_u8(),
+                Op::LoadInt.into_u8(), 42, 0, 0, 0, 0, 0, 0, 0,
+                Op::Pop.into_u8(),
+                Op::LoadFloat.into_u8(), 31, 133, 235, 81, 184, 30, 9, 64,
+                Op::Return.into_u8(),
+            ]
         );
     }
 }

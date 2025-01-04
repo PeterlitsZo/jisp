@@ -78,6 +78,7 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
                 Op::LoadNull => {
                     frame.stack.push(Value::null());
                 }
+                _ => unimplemented!(),
             }
             
             frame.pc += op.op_len();
