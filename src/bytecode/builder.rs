@@ -7,7 +7,7 @@ use crate::asm::{Asm, Stat};
 use super::{op::Op, Bytecode, IFunc};
 
 /// The [Bytecode] builder.
-pub(super) struct BytecodeBuilder {
+pub(crate) struct BytecodeBuilder {
     bytecode: Bytecode,
 }
 
@@ -20,7 +20,7 @@ impl BytecodeBuilder {
     }
 
     /// Parse the [Asm].
-    fn parse_asm(&mut self, asm: &Asm) -> &mut Self {
+    pub(crate) fn parse_asm(&mut self, asm: &Asm) -> &mut Self {
         for asm_ifunc in asm.ifuncs() {
             let mut ifunc_builder = IFunc::builder();
             for stat in asm_ifunc.stats() {
@@ -33,7 +33,7 @@ impl BytecodeBuilder {
     }
 
     /// Build the [Bytecode] and reset the builder itself.
-    fn build(&mut self) -> Bytecode {
+    pub(crate) fn build(&mut self) -> Bytecode {
         let mut tmp_bytecode = Bytecode::new();
         swap(&mut tmp_bytecode, &mut self.bytecode);
         tmp_bytecode

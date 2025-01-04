@@ -10,8 +10,10 @@ mod op;
 
 use builder::{BytecodeBuilder, IFuncBuilder};
 
+pub(super) use op::Op;
+
 /// The Jisp bytecode.
-struct Bytecode {
+pub(super) struct Bytecode {
     /// The i-functions.
     ifuncs: Vec<IFunc>,
 }
@@ -23,12 +25,12 @@ impl Bytecode {
     }
 
     /// Get the [Bytecode] builder.
-    fn builder() -> BytecodeBuilder {
+    pub(super) fn builder() -> BytecodeBuilder {
         BytecodeBuilder::new()
     }
 
     /// Get the i-functions.
-    fn ifuncs(&self) -> &[IFunc] {
+    pub(super) fn ifuncs(&self) -> &[IFunc] {
         &self.ifuncs
     }
 }
@@ -36,7 +38,7 @@ impl Bytecode {
 /// The i-function for the bytecode.  It means the internal-function of Jisp.
 ///
 /// It contains the bytecode to run.
-struct IFunc {
+pub(super) struct IFunc {
     /// The **bytecode** of this i-function.
     code: Vec<u8>,
 }
@@ -53,7 +55,7 @@ impl IFunc {
     }
 
     /// Get the internal bytecode.
-    fn code(&self) -> &[u8] {
+    pub(super) fn code(&self) -> &[u8] {
         &self.code
     }
 }

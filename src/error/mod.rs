@@ -1,9 +1,7 @@
-#![allow(dead_code)] // TODO (PeterlitsZo): This module will be used in the future.
-
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-enum Error {
+pub(super) enum Error {
     /// The bytecode is empty - and cannot be run by runner.
     #[error("empty bytecode")]
     EmptyBytecode,
@@ -13,4 +11,4 @@ enum Error {
     UnknownOpcode(u8),
 }
 
-type Result<T> = std::result::Result<T, Error>;
+pub(super) type Result<T> = std::result::Result<T, Error>;

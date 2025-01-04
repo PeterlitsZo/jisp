@@ -4,7 +4,7 @@
 
 /// The Jisp value.
 #[derive(Debug, PartialEq, Clone)]
-enum Value {
+pub(super) enum Value {
     Null,
 
     IFunc(u32),
@@ -12,17 +12,17 @@ enum Value {
 
 impl Value {
     /// Get the null value.
-    fn null() -> Self {
+    pub(super) fn null() -> Self {
         Self::Null
     }
 
     /// Get the ifunc value by giving ifunc index.
-    fn ifunc(idx: u32) -> Self {
+    pub(super) fn ifunc(idx: u32) -> Self {
         Self::IFunc(idx)
     }
 
     /// Check if the value is null and return `Some(())` if it is.
-    fn as_null(&self) -> Option<()> {
+    pub(super) fn as_null(&self) -> Option<()> {
         match self {
             Self::Null => Some(()),
             _ => None,
@@ -31,7 +31,7 @@ impl Value {
 
     /// Check if the value is ifunc and return `Some(idx)` if it is.  Here
     /// `idx` is the ifunc index in the Jisp program.
-    fn as_ifunc(&self) -> Option<u32> {
+    pub(super) fn as_ifunc(&self) -> Option<u32> {
         match self {
             Self::IFunc(idx) => Some(*idx),
             _ => None,
