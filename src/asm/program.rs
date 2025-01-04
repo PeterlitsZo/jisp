@@ -132,6 +132,13 @@ impl<'a> Parser<'a> {
 
             "POP" => self.ifunc_builder.push_stat(Stat::Pop),
 
+            "ADD" => self.ifunc_builder.push_stat(Stat::Add),
+            "SUB" => self.ifunc_builder.push_stat(Stat::Sub),
+            "MUL" => self.ifunc_builder.push_stat(Stat::Mul),
+            "DIV" => self.ifunc_builder.push_stat(Stat::Div),
+            "REM" => self.ifunc_builder.push_stat(Stat::Rem),
+            "FLOOR_DIV" => self.ifunc_builder.push_stat(Stat::FloorDiv),
+
             _ => panic!("unexpected op: {:?}", op),
         };
     }
@@ -300,7 +307,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test() {
+    fn test_simple() {
         let mut parser = Parser::new(indoc! {r#"
             ifunc 0 {
                 LOAD_NULL
@@ -325,6 +332,54 @@ mod tests {
                     .push_stat(Stat::LoadInt(42))
                     .push_stat(Stat::Pop)
                     .push_stat(Stat::LoadFloat(3.14))
+                    .push_stat(Stat::Return)
+                    .build()
+            })
+            .build();
+
+        assert_eq!(asm, wanted);
+    }
+
+    #[test]
+    fn test_calc() {
+        let mut parser = Parser::new(indoc! {r#"
+            ifunc 0 {
+                LOAD_INT        1
+                LOAD_INT        2
+                ADD
+                LOAD_INT        3
+                LOAD_INT        4
+                SUB
+                LOAD_INT        5
+                MUL
+                LOAD_FLOAT      1.0
+                DIV
+                LOAD_INT        6
+                REM
+                LOAD_INT        7
+                FLOOR_DIV
+                RETURN
+            }
+        "#});
+        let asm = parser.parse();
+
+        let wanted = Asm::builder()
+            .push_ifunc_by(|mut ifunc_builder| {
+                ifunc_builder
+                    .push_stat(Stat::LoadInt(1))
+                    .push_stat(Stat::LoadInt(2))
+                    .push_stat(Stat::Add)
+                    .push_stat(Stat::LoadInt(3))
+                    .push_stat(Stat::LoadInt(4))
+                    .push_stat(Stat::Sub)
+                    .push_stat(Stat::LoadInt(5))
+                    .push_stat(Stat::Mul)
+                    .push_stat(Stat::LoadFloat(1.0))
+                    .push_stat(Stat::Div)
+                    .push_stat(Stat::LoadInt(6))
+                    .push_stat(Stat::Rem)
+                    .push_stat(Stat::LoadInt(7))
+                    .push_stat(Stat::FloorDiv)
                     .push_stat(Stat::Return)
                     .build()
             })

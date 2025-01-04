@@ -83,4 +83,17 @@ pub(super) enum Stat {
 
     /// Drop a value from the ifunc stack top.
     Pop,
+
+    /// Add two values from the stack top and push the result to the stack top.
+    Add,
+    /// Subtract two values from the stack top and push the result to the stack top.
+    Sub,
+    /// Multiply two values from the stack top and push the result to the stack top.
+    Mul,
+    /// Divide two values from the stack top and push the result to the stack top.
+    Div,
+    /// Modulo two values from the stack top and push the result to the stack top.
+    Rem,
+    /// Divide floorly two values from the stack top and push the result to the stack top.
+    FloorDiv,
 }

@@ -63,6 +63,8 @@ impl IFuncBuilder {
             Stat::LoadFloat(val) => self.push_op_args(Op::LoadFloat, &val.to_le_bytes()),
 
             Stat::Pop => self.push_op(Op::Pop),
+
+            _ => unimplemented!(),
         }
     }
 
