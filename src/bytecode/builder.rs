@@ -64,7 +64,12 @@ impl IFuncBuilder {
 
             Stat::Pop => self.push_op(Op::Pop),
 
-            _ => unimplemented!(),
+            Stat::Add => self.push_op(Op::Add),
+            Stat::Sub => self.push_op(Op::Sub),
+            Stat::Mul => self.push_op(Op::Mul),
+            Stat::Div => self.push_op(Op::Div),
+            Stat::Rem => self.push_op(Op::Rem),
+            Stat::FloorDiv => self.push_op(Op::FloorDiv),
         }
     }
 
@@ -121,6 +126,50 @@ mod tests {
                 Op::LoadInt.into_u8(), 42, 0, 0, 0, 0, 0, 0, 0,
                 Op::Pop.into_u8(),
                 Op::LoadFloat.into_u8(), 31, 133, 235, 81, 184, 30, 9, 64,
+                Op::Return.into_u8(),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_build_from_calc_asm() {
+        let asm = Asm::from_program(indoc! {r#"
+            ifunc 0 {
+                LOAD_INT        3
+                LOAD_INT        4
+                ADD
+                LOAD_INT        4
+                SUB
+                LOAD_INT        2
+                MUL
+                LOAD_INT        3
+                DIV
+                LOAD_INT        2
+                REM
+                LOAD_INT        3
+                FLOOR_DIV
+                RETURN
+            }
+        "#});
+        let bytecode = Bytecode::builder().parse_asm(&asm).build();
+
+        assert_eq!(bytecode.ifuncs.len(), 1);
+        assert_eq!(
+            bytecode.ifuncs[0].code,
+            vec![
+                Op::LoadInt.into_u8(), 3, 0, 0, 0, 0, 0, 0, 0,
+                Op::LoadInt.into_u8(), 4, 0, 0, 0, 0, 0, 0, 0,
+                Op::Add.into_u8(),
+                Op::LoadInt.into_u8(), 4, 0, 0, 0, 0, 0, 0, 0,
+                Op::Sub.into_u8(),
+                Op::LoadInt.into_u8(), 2, 0, 0, 0, 0, 0, 0, 0,
+                Op::Mul.into_u8(),
+                Op::LoadInt.into_u8(), 3, 0, 0, 0, 0, 0, 0, 0,
+                Op::Div.into_u8(),
+                Op::LoadInt.into_u8(), 2, 0, 0, 0, 0, 0, 0, 0,
+                Op::Rem.into_u8(),
+                Op::LoadInt.into_u8(), 3, 0, 0, 0, 0, 0, 0, 0,
+                Op::FloorDiv.into_u8(),
                 Op::Return.into_u8(),
             ]
         );

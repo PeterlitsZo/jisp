@@ -10,6 +10,13 @@ pub(crate) enum Op {
     LoadFloat,
 
     Pop,
+
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+    FloorDiv,
 }
 
 impl Op {
@@ -21,6 +28,13 @@ impl Op {
 
     const OP_POP: u8 = Self::Pop as u8;
 
+    const OP_ADD: u8 = Self::Add as u8;
+    const OP_SUB: u8 = Self::Sub as u8;
+    const OP_MUL: u8 = Self::Mul as u8;
+    const OP_DIV: u8 = Self::Div as u8;
+    const OP_REM: u8 = Self::Rem as u8;
+    const OP_FLOOR_DIV: u8 = Self::FloorDiv as u8;
+
     /// Convert the opcode to a byte.
     pub(crate) fn into_u8(self) -> u8 {
         match self {
@@ -31,6 +45,13 @@ impl Op {
             Self::LoadFloat => Self::OP_LOAD_FLOAT,
 
             Self::Pop => Self::OP_POP,
+
+            Self::Add => Self::OP_ADD,
+            Self::Sub => Self::OP_SUB,
+            Self::Mul => Self::OP_MUL,
+            Self::Div => Self::OP_DIV,
+            Self::Rem => Self::OP_REM,
+            Self::FloorDiv => Self::OP_FLOOR_DIV,
         }
     }
 
@@ -44,6 +65,13 @@ impl Op {
             Self::OP_LOAD_FLOAT => Some(Self::LoadFloat),
 
             Self::OP_POP => Some(Self::Pop),
+
+            Self::OP_ADD => Some(Self::Add),
+            Self::OP_SUB => Some(Self::Sub),
+            Self::OP_MUL => Some(Self::Mul),
+            Self::OP_DIV => Some(Self::Div),
+            Self::OP_REM => Some(Self::Rem),
+            Self::OP_FLOOR_DIV => Some(Self::FloorDiv),
 
             _ => None,
         }
@@ -59,6 +87,13 @@ impl Op {
             Self::LoadFloat => 9,
 
             Self::Pop => 1,
+
+            Self::Add => 1,
+            Self::Sub => 1,
+            Self::Mul => 1,
+            Self::Div => 1,
+            Self::Rem => 1,
+            Self::FloorDiv => 1,
         }
     }
 }

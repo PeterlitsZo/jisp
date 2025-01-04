@@ -99,6 +99,8 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
                 Op::Pop => {
                     frame.stack.pop().ok_or(Error::EmptyStack)?;
                 }
+
+                _ => unimplemented!()
             }
             
             frame.pc += op.op_len();
