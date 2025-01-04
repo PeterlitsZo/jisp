@@ -8,3 +8,4 @@ license = "UNKNOWN FOR NOW"
 
 [dependencies]
 indoc = "2.0.5"
+thiserror = "2.0.9"
