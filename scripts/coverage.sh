@@ -29,6 +29,12 @@ elif [[ "$1" == "build-cov" ]]; then
     # Generate the HTML coverage report from the `cargo-test.profraw` file.
 
     rm -rf target/coverage
+    if ! command -v grcov &> /dev/null; then
+        echo 'The grcov is not installed. Please install it by `cargo install grcov`.'
+        echo
+        echo 'More info: https://github.com/mozilla/grcov'
+        exit 1
+    fi
     grcov . --binary-path ./target/debug/deps/ \
         -s . -t html --branch \
         --ignore-not-existing --ignore '../*' --ignore "/*" \

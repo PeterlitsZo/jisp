@@ -66,6 +66,29 @@ impl Value {
             _ => None,
         }
     }
+
+    /// Get the kind of the value.
+    pub(super) fn kind(&self) -> ValueKind {
+        match self {
+            Self::Null => ValueKind::Null,
+
+            Self::IFunc(..) => ValueKind::IFunc,
+
+            Self::Int(..) => ValueKind::Int,
+            Self::Float(..) => ValueKind::Float,
+        }
+    }
+}
+
+/// The kind (type) of value.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum ValueKind {
+    Null,
+
+    IFunc,
+
+    Int,
+    Float,
 }
 
 #[cfg(test)]

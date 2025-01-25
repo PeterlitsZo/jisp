@@ -1,7 +1,7 @@
 //! The bytecode opcodes.  See [Op] to know more.
 
 /// The bytecode opcodes.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Op {
     Return,
 
