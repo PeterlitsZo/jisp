@@ -80,6 +80,8 @@ pub(super) enum Stat {
     LoadInt(i64),
     /// Load the float and push it to the ifunc stack top.
     LoadFloat(f64),
+    /// Load the boolean and push it to the ifunc stack top.
+    LoadBool(bool),
 
     /// Drop a value from the ifunc stack top.
     Pop,

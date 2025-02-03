@@ -1,6 +1,6 @@
 #![allow(dead_code)] // TODO (PeterlitsZo): This line need be removed in the future.
 
-//! Definded the type [Value] and its implementation.
+//! Defined the type [Value] and its implementation.
 
 /// The Jisp value.
 #[derive(Debug, PartialEq, Clone)]
@@ -11,6 +11,7 @@ pub(super) enum Value {
 
     Int(i64),
     Float(f64),
+    Bool(bool),
 }
 
 impl Value {
@@ -32,6 +33,11 @@ impl Value {
     /// Get the float value by giving the raw f64 value.
     pub(super) fn float(value: f64) -> Self {
         Self::Float(value)
+    }
+
+    /// Get the bool value by giving the raw bool value.
+    pub(super) fn bool(value: bool) -> Self {
+        Self::Bool(value)
     }
 
     /// Check if the value is null and return `Some(())` if it is.
@@ -67,6 +73,14 @@ impl Value {
         }
     }
 
+    /// Check if the value is bool and return `Some(value)` if it is.
+    pub(super) fn as_bool(&self) -> Option<bool> {
+        match self {
+            Self::Bool(value) => Some(*value),
+            _ => None,
+        }
+    }
+
     /// Get the kind of the value.
     pub(super) fn kind(&self) -> ValueKind {
         match self {
@@ -76,6 +90,7 @@ impl Value {
 
             Self::Int(..) => ValueKind::Int,
             Self::Float(..) => ValueKind::Float,
+            Self::Bool(..) => ValueKind::Bool,
         }
     }
 }
@@ -89,6 +104,7 @@ pub(super) enum ValueKind {
 
     Int,
     Float,
+    Bool,
 }
 
 #[cfg(test)]
@@ -108,5 +124,15 @@ mod tests {
     #[test]
     fn test_value_as_int() {
         assert_eq!(Value::int(42).as_int(), Some(42));
+    }
+
+    #[test]
+    fn test_value_as_float() {
+        assert_eq!(Value::float(3.14).as_float(), Some(3.14));
+    }
+
+    #[test]
+    fn test_value_as_bool() {
+        assert_eq!(Value::bool(true).as_bool(), Some(true));
     }
 }

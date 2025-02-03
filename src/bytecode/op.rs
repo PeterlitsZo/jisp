@@ -8,6 +8,7 @@ pub(crate) enum Op {
     LoadNull,
     LoadInt,
     LoadFloat,
+    LoadBool,
 
     Pop,
 
@@ -25,6 +26,7 @@ impl Op {
     const OP_LOAD_NULL: u8 = Self::LoadNull as u8;
     const OP_LOAD_INT: u8 = Self::LoadInt as u8;
     const OP_LOAD_FLOAT: u8 = Self::LoadFloat as u8;
+    const OP_LOAD_BOOL: u8 = Self::LoadBool as u8;
 
     const OP_POP: u8 = Self::Pop as u8;
 
@@ -43,6 +45,7 @@ impl Op {
             Self::LoadNull => Self::OP_LOAD_NULL,
             Self::LoadInt => Self::OP_LOAD_INT,
             Self::LoadFloat => Self::OP_LOAD_FLOAT,
+            Self::LoadBool => Self::OP_LOAD_BOOL,
 
             Self::Pop => Self::OP_POP,
 
@@ -63,6 +66,7 @@ impl Op {
             Self::OP_LOAD_NULL => Some(Self::LoadNull),
             Self::OP_LOAD_INT => Some(Self::LoadInt),
             Self::OP_LOAD_FLOAT => Some(Self::LoadFloat),
+            Self::OP_LOAD_BOOL => Some(Self::LoadBool),
 
             Self::OP_POP => Some(Self::Pop),
 
@@ -85,6 +89,7 @@ impl Op {
             Self::LoadNull => 1,
             Self::LoadInt => 9,
             Self::LoadFloat => 9,
+            Self::LoadBool => 2,
 
             Self::Pop => 1,
 

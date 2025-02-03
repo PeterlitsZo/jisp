@@ -61,6 +61,7 @@ impl IFuncBuilder {
             Stat::LoadNull => self.push_op(Op::LoadNull),
             Stat::LoadInt(val) => self.push_op_args(Op::LoadInt, &val.to_le_bytes()),
             Stat::LoadFloat(val) => self.push_op_args(Op::LoadFloat, &val.to_le_bytes()),
+            Stat::LoadBool(val) => self.push_op_args(Op::LoadBool, &[if *val { 1 } else { 0 }]),
 
             Stat::Pop => self.push_op(Op::Pop),
 

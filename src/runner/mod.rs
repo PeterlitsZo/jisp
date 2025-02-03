@@ -80,7 +80,7 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
                     frame.stack.push(Value::null());
                 }
                 Op::LoadInt => {
-                    if ifunc.code().len() < frame.pc + 9 {
+                    if ifunc.code().len() < frame.pc + Op::LoadInt.op_len() {
                         return Err(Error::BadOpcode(op));
                     }
                     let val = &ifunc.code()[frame.pc + 1..frame.pc + 9];
@@ -88,12 +88,19 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
                     frame.stack.push(Value::int(val));
                 }
                 Op::LoadFloat => {
-                    if ifunc.code().len() < frame.pc + 9 {
+                    if ifunc.code().len() < frame.pc + Op::LoadFloat.op_len() {
                         return Err(Error::BadOpcode(op));
                     }
                     let val = &ifunc.code()[frame.pc + 1..frame.pc + 9];
                     let val = f64::from_le_bytes(val.try_into().unwrap());
                     frame.stack.push(Value::float(val));
+                }
+                Op::LoadBool => {
+                    if ifunc.code().len() < frame.pc + Op::LoadBool.op_len() {
+                        return Err(Error::BadOpcode(op));
+                    }
+                    let val = if ifunc.code()[frame.pc + 1] == 0 { false } else { true };
+                    frame.stack.push(Value::bool(val));
                 }
 
                 Op::Pop => {
@@ -264,6 +271,14 @@ mod tests {
             }
         "# };
         assert_eq!(run_program(program).unwrap(), Value::float(3.14));
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_BOOL       true
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap(), Value::bool(true));
     }
 
     #[test]

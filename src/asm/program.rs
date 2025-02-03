@@ -129,6 +129,16 @@ impl<'a> Parser<'a> {
                 let val = tokens[1].as_float().unwrap();
                 self.ifunc_builder.push_stat(Stat::LoadFloat(val))
             }
+            "LOAD_BOOL" => {
+                let val = tokens[1].as_name().unwrap();
+                let val = match val.as_str() {
+                    "true" => true,
+                    "false" => false,
+                    _ => panic!("unexpected bool value: {:?}", val),
+                    
+                };
+                self.ifunc_builder.push_stat(Stat::LoadBool(val))
+            }
 
             "POP" => self.ifunc_builder.push_stat(Stat::Pop),
 
@@ -311,12 +321,11 @@ mod tests {
         let mut parser = Parser::new(indoc! {r#"
             ifunc 0 {
                 LOAD_NULL
-                POP
-                LOAD_NULL
-                POP
                 LOAD_INT        42
-                POP
                 LOAD_FLOAT      3.14
+                LOAD_BOOL       true
+                LOAD_BOOL       false
+                POP
                 RETURN
             }
         "#});
@@ -326,12 +335,11 @@ mod tests {
             .push_ifunc_by(|mut ifunc_builder| {
                 ifunc_builder
                     .push_stat(Stat::LoadNull)
-                    .push_stat(Stat::Pop)
-                    .push_stat(Stat::LoadNull)
-                    .push_stat(Stat::Pop)
                     .push_stat(Stat::LoadInt(42))
-                    .push_stat(Stat::Pop)
                     .push_stat(Stat::LoadFloat(3.14))
+                    .push_stat(Stat::LoadBool(true))
+                    .push_stat(Stat::LoadBool(false))
+                    .push_stat(Stat::Pop)
                     .push_stat(Stat::Return)
                     .build()
             })
