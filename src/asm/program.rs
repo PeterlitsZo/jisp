@@ -149,6 +149,13 @@ impl<'a> Parser<'a> {
             "REM" => self.ifunc_builder.push_stat(Stat::Rem),
             "FLOOR_DIV" => self.ifunc_builder.push_stat(Stat::FloorDiv),
 
+            "EQ" => self.ifunc_builder.push_stat(Stat::Eq),
+            "NE" => self.ifunc_builder.push_stat(Stat::Ne),
+            "LT" => self.ifunc_builder.push_stat(Stat::Lt),
+            "LE" => self.ifunc_builder.push_stat(Stat::Le),
+            "GT" => self.ifunc_builder.push_stat(Stat::Gt),
+            "GE" => self.ifunc_builder.push_stat(Stat::Ge),
+
             _ => panic!("unexpected op: {:?}", op),
         };
     }
@@ -394,5 +401,73 @@ mod tests {
             .build();
 
         assert_eq!(asm, wanted);
+    }
+
+    #[test]
+    fn test_compare() {
+        let mut parser = Parser::new(indoc! {r#"
+            ifunc 0 {
+                LOAD_INT        -1
+                LOAD_INT        -2
+                LT
+                LOAD_INT        3
+                LOAD_INT        4
+                LE
+                NE
+
+                RETURN
+            }
+        "#});
+        let asm = parser.parse();
+
+        let wanted = Asm::builder()
+            .push_ifunc_by(|mut ifunc_builder| {
+                ifunc_builder
+                    .push_stat(Stat::LoadInt(-1))
+                    .push_stat(Stat::LoadInt(-2))
+                    .push_stat(Stat::Lt)
+                    .push_stat(Stat::LoadInt(3))
+                    .push_stat(Stat::LoadInt(4))
+                    .push_stat(Stat::Le)
+                    .push_stat(Stat::Ne)
+                    .push_stat(Stat::Return)
+                    .build()
+            })
+            .build();
+
+        assert_eq!(asm, wanted);
+
+        let mut parser = Parser::new(indoc! {r#"
+            ifunc 0 {
+                LOAD_INT        1
+                LOAD_INT        2
+                GT
+                LOAD_INT        3
+                LOAD_INT        4
+                GE
+                EQ
+
+                RETURN
+            }
+        "#});
+        let asm = parser.parse();
+
+        let wanted = Asm::builder()
+            .push_ifunc_by(|mut ifunc_builder| {
+                ifunc_builder
+                    .push_stat(Stat::LoadInt(1))
+                    .push_stat(Stat::LoadInt(2))
+                    .push_stat(Stat::Gt)
+                    .push_stat(Stat::LoadInt(3))
+                    .push_stat(Stat::LoadInt(4))
+                    .push_stat(Stat::Ge)
+                    .push_stat(Stat::Eq)
+                    .push_stat(Stat::Return)
+                    .build()
+            })
+            .build();
+
+        assert_eq!(asm, wanted);
+
     }
 }

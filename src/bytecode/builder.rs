@@ -71,6 +71,8 @@ impl IFuncBuilder {
             Stat::Div => self.push_op(Op::Div),
             Stat::Rem => self.push_op(Op::Rem),
             Stat::FloorDiv => self.push_op(Op::FloorDiv),
+
+            _ => todo!("to impl")
         }
     }
 

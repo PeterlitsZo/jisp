@@ -98,4 +98,23 @@ pub(super) enum Stat {
     Rem,
     /// Divide floorly two values from the stack top and push the result to the stack top.
     FloorDiv,
+
+    /// Check if two values from the stack top are equal and push the result to
+    /// the stack top.
+    Eq,
+    /// Check if two values from the stack top are not equal and push the result
+    /// to the stack top.
+    Ne,
+    /// Check if the 2nd value less than the 1st value from the stack top and
+    /// push the result to the stack top.
+    Lt,
+    /// Check if the 2nd value less than or equal with the 1st value from the
+    /// stack top and push the result to the stack top.
+    Le,
+    /// Check if the 2nd value greater than the 1st value from the stack top and
+    /// push the result to the stack top.
+    Gt,
+    /// Check if the 2nd value greater than or equal with the 1st value from the
+    /// stack top and push the result to the stack top.
+    Ge,
 }
