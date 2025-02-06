@@ -132,13 +132,37 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
                     frame.stack.push(Self::floor_div(arg1, arg2)?);
                 }
 
-                _ => todo!("to impl in the future...")
+                Op::Eq => {
+                    let (arg1, arg2) = Self::pop_2(frame)?;
+                    frame.stack.push(Self::eq(arg1, arg2)?);
+                }
+                Op::Ne => {
+                    let (arg1, arg2) = Self::pop_2(frame)?;
+                    frame.stack.push(Self::ne(arg1, arg2)?);
+                }
+                Op::Lt => {
+                    let (arg1, arg2) = Self::pop_2(frame)?;
+                    frame.stack.push(Self::lt(arg1, arg2)?);
+                }
+                Op::Le => {
+                    let (arg1, arg2) = Self::pop_2(frame)?;
+                    frame.stack.push(Self::le(arg1, arg2)?);
+                }
+                Op::Gt => {
+                    let (arg1, arg2) = Self::pop_2(frame)?;
+                    frame.stack.push(Self::gt(arg1, arg2)?);
+                }
+                Op::Ge => {
+                    let (arg1, arg2) = Self::pop_2(frame)?;
+                    frame.stack.push(Self::ge(arg1, arg2)?);
+                }
             }
             
             frame.pc += op.op_len();
         }
     }
 
+    /// Pop a value from the stack.
     fn pop_1(frame: &mut Frame) -> Result<Value> {
         if frame.stack.is_empty() {
             return Err(Error::EmptyStack)?;
@@ -146,6 +170,7 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
         Ok(frame.stack.pop().unwrap())
     }
 
+    /// Pop two values from the stack as (2nd element, 1st element).
     fn pop_2(frame: &mut Frame) -> Result<(Value, Value)> {
         if frame.stack.len() < 2 {
             return Err(Error::EmptyStack)?;
@@ -228,6 +253,88 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
             (Value::Float(arg1), Value::Float(arg2)) => Ok(Value::Float((arg1 / arg2).floor())),
             (arg1, arg2) => Err(Error::TypeError {
                 op: Op::FloorDiv,
+                arg_kinds: ArgKinds::new(vec![arg1.kind(), arg2.kind()]),
+            }),
+        }
+    }
+
+    fn eq(arg1: Value, arg2: Value) -> Result<Value> {
+        match (arg1, arg2) {
+            (Value::Null, Value::Null) => Ok(Value::bool(true)),
+            (Value::Int(arg1), Value::Int(arg2)) => Ok(Value::bool(arg1 == arg2)),
+            (Value::Int(arg1), Value::Float(arg2)) => Ok(Value::bool(arg1 as f64 == arg2)),
+            (Value::Float(arg1), Value::Int(arg2)) => Ok(Value::bool(arg1 == arg2 as f64)),
+            (Value::Float(arg1), Value::Float(arg2)) => Ok(Value::bool(arg1 == arg2)),
+            (Value::Bool(arg1), Value::Bool(arg2)) => Ok(Value::bool(arg1 == arg2)),
+            (arg1, arg2) => Err(Error::TypeError {
+                op: Op::Eq,
+                arg_kinds: ArgKinds::new(vec![arg1.kind(), arg2.kind()]),
+            }),
+        }
+    }
+
+    fn ne(arg1: Value, arg2: Value) -> Result<Value> {
+        match (arg1, arg2) {
+            (Value::Null, Value::Null) => Ok(Value::bool(false)),
+            (Value::Int(arg1), Value::Int(arg2)) => Ok(Value::bool(arg1 != arg2)),
+            (Value::Int(arg1), Value::Float(arg2)) => Ok(Value::bool(arg1 as f64 != arg2)),
+            (Value::Float(arg1), Value::Int(arg2)) => Ok(Value::bool(arg1 != arg2 as f64)),
+            (Value::Float(arg1), Value::Float(arg2)) => Ok(Value::bool(arg1 != arg2)),
+            (Value::Bool(arg1), Value::Bool(arg2)) => Ok(Value::bool(arg1 != arg2)),
+            (arg1, arg2) => Err(Error::TypeError {
+                op: Op::Ne,
+                arg_kinds: ArgKinds::new(vec![arg1.kind(), arg2.kind()]),
+            }),
+        }
+    }
+
+    fn lt(arg1: Value, arg2: Value) -> Result<Value> {
+        match (arg1, arg2) {
+            (Value::Int(arg1), Value::Int(arg2)) => Ok(Value::bool(arg1 < arg2)),
+            (Value::Int(arg1), Value::Float(arg2)) => Ok(Value::bool((arg1 as f64) < arg2)),
+            (Value::Float(arg1), Value::Int(arg2)) => Ok(Value::bool(arg1 < arg2 as f64)),
+            (Value::Float(arg1), Value::Float(arg2)) => Ok(Value::bool(arg1 < arg2)),
+            (arg1, arg2) => Err(Error::TypeError {
+                op: Op::Lt,
+                arg_kinds: ArgKinds::new(vec![arg1.kind(), arg2.kind()]),
+            }),
+        }
+    }
+
+    fn le(arg1: Value, arg2: Value) -> Result<Value> {
+        match (arg1, arg2) {
+            (Value::Int(arg1), Value::Int(arg2)) => Ok(Value::bool(arg1 <= arg2)),
+            (Value::Int(arg1), Value::Float(arg2)) => Ok(Value::bool(arg1 as f64 <= arg2)),
+            (Value::Float(arg1), Value::Int(arg2)) => Ok(Value::bool(arg1 <= arg2 as f64)),
+            (Value::Float(arg1), Value::Float(arg2)) => Ok(Value::bool(arg1 <= arg2)),
+            (arg1, arg2) => Err(Error::TypeError {
+                op: Op::Le,
+                arg_kinds: ArgKinds::new(vec![arg1.kind(), arg2.kind()]),
+            }),
+        }
+    }
+
+    fn gt(arg1: Value, arg2: Value) -> Result<Value> {
+        match (arg1, arg2) {
+            (Value::Int(arg1), Value::Int(arg2)) => Ok(Value::bool(arg1 > arg2)),
+            (Value::Int(arg1), Value::Float(arg2)) => Ok(Value::bool(arg1 as f64 > arg2)),
+            (Value::Float(arg1), Value::Int(arg2)) => Ok(Value::bool(arg1 > arg2 as f64)),
+            (Value::Float(arg1), Value::Float(arg2)) => Ok(Value::bool(arg1 > arg2)),
+            (arg1, arg2) => Err(Error::TypeError {
+                op: Op::Gt,
+                arg_kinds: ArgKinds::new(vec![arg1.kind(), arg2.kind()]),
+            }),
+        }
+    }
+
+    fn ge(arg1: Value, arg2: Value) -> Result<Value> {
+        match (arg1, arg2) {
+            (Value::Int(arg1), Value::Int(arg2)) => Ok(Value::bool(arg1 >= arg2)),
+            (Value::Int(arg1), Value::Float(arg2)) => Ok(Value::bool(arg1 as f64 >= arg2)),
+            (Value::Float(arg1), Value::Int(arg2)) => Ok(Value::bool(arg1 >= arg2 as f64)),
+            (Value::Float(arg1), Value::Float(arg2)) => Ok(Value::bool(arg1 >= arg2)),
+            (arg1, arg2) => Err(Error::TypeError {
+                op: Op::Ge,
                 arg_kinds: ArgKinds::new(vec![arg1.kind(), arg2.kind()]),
             }),
         }
@@ -498,5 +605,9 @@ mod tests {
             op: Op::FloorDiv,
             arg_kinds: ArgKinds::new(vec![ValueKind::Int, ValueKind::Null])
         });
+    }
+
+    fn test_simple_compare() {
+        // TODO (PeterlitsZo): Waiting the supportion of op And.
     }
 }
