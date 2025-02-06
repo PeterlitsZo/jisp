@@ -8,3 +8,7 @@ clippy:
 # Run coverage.
 coverage arg='help':
   bash scripts/coverage.sh {{arg}}
+
+# List todos in source code.
+list-todos:
+  bash scripts/list-todos.sh
