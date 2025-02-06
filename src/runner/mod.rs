@@ -131,6 +131,8 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
                     let (arg1, arg2) = Self::pop_2(frame)?;
                     frame.stack.push(Self::floor_div(arg1, arg2)?);
                 }
+
+                _ => todo!("to impl in the future...")
             }
             
             frame.pc += op.op_len();

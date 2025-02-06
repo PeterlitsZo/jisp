@@ -1,6 +1,8 @@
 //! The bytecode opcodes.  See [Op] to know more.
 
 /// The bytecode opcodes.
+/// 
+/// You can see the [crate::asm::Stat] to know more about those opcodes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Op {
     Return,
@@ -18,6 +20,13 @@ pub(crate) enum Op {
     Div,
     Rem,
     FloorDiv,
+
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
 }
 
 impl Op {
@@ -37,6 +46,13 @@ impl Op {
     const OP_REM: u8 = Self::Rem as u8;
     const OP_FLOOR_DIV: u8 = Self::FloorDiv as u8;
 
+    const OP_EQ: u8 = Self::Eq as u8;
+    const OP_NE: u8 = Self::Ne as u8;
+    const OP_LT: u8 = Self::Lt as u8;
+    const OP_LE: u8 = Self::Le as u8;
+    const OP_GT: u8 = Self::Gt as u8;
+    const OP_GE: u8 = Self::Ge as u8;
+
     /// Convert the opcode to a byte.
     pub(crate) fn into_u8(self) -> u8 {
         match self {
@@ -55,6 +71,13 @@ impl Op {
             Self::Div => Self::OP_DIV,
             Self::Rem => Self::OP_REM,
             Self::FloorDiv => Self::OP_FLOOR_DIV,
+
+            Self::Eq => Self::OP_EQ,
+            Self::Ne => Self::OP_NE,
+            Self::Lt => Self::OP_LT,
+            Self::Le => Self::OP_LE,
+            Self::Gt => Self::OP_GT,
+            Self::Ge => Self::OP_GE,
         }
     }
 
@@ -76,6 +99,13 @@ impl Op {
             Self::OP_DIV => Some(Self::Div),
             Self::OP_REM => Some(Self::Rem),
             Self::OP_FLOOR_DIV => Some(Self::FloorDiv),
+
+            Self::OP_EQ => Some(Self::Eq),
+            Self::OP_NE => Some(Self::Ne),
+            Self::OP_LT => Some(Self::Lt),
+            Self::OP_LE => Some(Self::Le),
+            Self::OP_GT => Some(Self::Gt),
+            Self::OP_GE => Some(Self::Ge),
 
             _ => None,
         }
@@ -99,6 +129,13 @@ impl Op {
             Self::Div => 1,
             Self::Rem => 1,
             Self::FloorDiv => 1,
+
+            Self::Eq => 1,
+            Self::Ne => 1,
+            Self::Lt => 1,
+            Self::Le => 1,
+            Self::Gt => 1,
+            Self::Ge => 1,
         }
     }
 }
