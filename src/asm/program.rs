@@ -156,6 +156,10 @@ impl<'a> Parser<'a> {
             "GT" => self.ifunc_builder.push_stat(Stat::Gt),
             "GE" => self.ifunc_builder.push_stat(Stat::Ge),
 
+            "NOT" => self.ifunc_builder.push_stat(Stat::Not),
+            "AND" => self.ifunc_builder.push_stat(Stat::And),
+            "OR" => self.ifunc_builder.push_stat(Stat::Or),
+
             _ => panic!("unexpected op: {:?}", op),
         };
     }
@@ -468,6 +472,39 @@ mod tests {
             .build();
 
         assert_eq!(asm, wanted);
+    }
 
+    #[test]
+    fn test_logical() {
+        let mut parser = Parser::new(indoc! {r#"
+            ifunc 0 {
+                LOAD_BOOL       true
+                LOAD_BOOL       false
+                AND
+                LOAD_BOOL       true
+                LOAD_BOOL       false
+                OR
+                NOT
+
+                RETURN
+            }
+        "#});
+        let asm = parser.parse();
+
+        let wanted = Asm::builder()
+            .push_ifunc_by(|mut ifunc_builder| {
+                ifunc_builder
+                    .push_stat(Stat::LoadBool(true))
+                    .push_stat(Stat::LoadBool(false))
+                    .push_stat(Stat::And)
+                    .push_stat(Stat::LoadBool(true))
+                    .push_stat(Stat::LoadBool(false))
+                    .push_stat(Stat::Or)
+                    .push_stat(Stat::Not)
+                    .push_stat(Stat::Return)
+                    .build()
+            })
+            .build();
+        assert_eq!(asm, wanted);
     }
 }

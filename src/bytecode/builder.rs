@@ -78,6 +78,8 @@ impl IFuncBuilder {
             Stat::Le => self.push_op(Op::Le),
             Stat::Gt => self.push_op(Op::Gt),
             Stat::Ge => self.push_op(Op::Ge),
+
+            _ => todo!("impl for Stat Not, And and Or")
         }
     }
 

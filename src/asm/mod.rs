@@ -117,4 +117,13 @@ pub(super) enum Stat {
     /// Check if the 2nd value greater than or equal with the 1st value from the
     /// stack top and push the result to the stack top.
     Ge,
+
+    /// Let the value of the stack top be the opposite.
+    Not,
+    /// Logical and two values from the stack top and push the result to the
+    /// stack top.
+    And,
+    /// Logical or two values from the stack top and push the result to the
+    /// stack top.
+    Or,
 }
