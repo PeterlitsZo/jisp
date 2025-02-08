@@ -27,6 +27,10 @@ pub(crate) enum Op {
     Le,
     Gt,
     Ge,
+
+    Not,
+    And,
+    Or,
 }
 
 impl Op {
@@ -53,6 +57,10 @@ impl Op {
     const OP_GT: u8 = Self::Gt as u8;
     const OP_GE: u8 = Self::Ge as u8;
 
+    const OP_NOT: u8 = Self::Not as u8;
+    const OP_AND: u8 = Self::And as u8;
+    const OP_OR: u8 = Self::Or as u8;
+
     /// Convert the opcode to a byte.
     pub(crate) fn into_u8(self) -> u8 {
         match self {
@@ -78,6 +86,10 @@ impl Op {
             Self::Le => Self::OP_LE,
             Self::Gt => Self::OP_GT,
             Self::Ge => Self::OP_GE,
+
+            Self::Not => Self::OP_NOT,
+            Self::And => Self::OP_AND,
+            Self::Or => Self::OP_OR,
         }
     }
 
@@ -106,6 +118,10 @@ impl Op {
             Self::OP_LE => Some(Self::Le),
             Self::OP_GT => Some(Self::Gt),
             Self::OP_GE => Some(Self::Ge),
+
+            Self::OP_NOT => Some(Self::Not),
+            Self::OP_AND => Some(Self::And),
+            Self::OP_OR => Some(Self::Or),
 
             _ => None,
         }
@@ -136,6 +152,10 @@ impl Op {
             Self::Le => 1,
             Self::Gt => 1,
             Self::Ge => 1,
+
+            Self::Not => 1,
+            Self::And => 1,
+            Self::Or => 1,
         }
     }
 }

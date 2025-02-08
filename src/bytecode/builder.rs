@@ -79,7 +79,9 @@ impl IFuncBuilder {
             Stat::Gt => self.push_op(Op::Gt),
             Stat::Ge => self.push_op(Op::Ge),
 
-            _ => todo!("impl for Stat Not, And and Or")
+            Stat::Not => self.push_op(Op::Not),
+            Stat::And => self.push_op(Op::And),
+            Stat::Or => self.push_op(Op::Or),
         }
     }
 
@@ -224,6 +226,36 @@ mod tests {
                 Op::Gt.into_u8(),
                 Op::LoadInt.into_u8(), 3, 0, 0, 0, 0, 0, 0, 0,
                 Op::Ge.into_u8(),
+                Op::Return.into_u8(),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_build_from_logical_asm() {
+        let asm = Asm::from_program(indoc! {r#"
+            ifunc 0 {
+                LOAD_BOOL       true
+                LOAD_BOOL       false
+                AND
+                LOAD_BOOL       true
+                OR
+                NOT
+                RETURN
+            }
+        "#});
+        let bytecode = Bytecode::builder().parse_asm(&asm).build();
+
+        assert_eq!(bytecode.ifuncs.len(), 1);
+        assert_eq!(
+            bytecode.ifuncs[0].code,
+            vec![
+                Op::LoadBool.into_u8(), 1,
+                Op::LoadBool.into_u8(), 0,
+                Op::And.into_u8(),
+                Op::LoadBool.into_u8(), 1,
+                Op::Or.into_u8(),
+                Op::Not.into_u8(),
                 Op::Return.into_u8(),
             ]
         );

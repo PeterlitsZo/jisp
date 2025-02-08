@@ -156,6 +156,8 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
                     let (arg1, arg2) = Self::pop_2(frame)?;
                     frame.stack.push(Self::ge(arg1, arg2)?);
                 }
+
+                _ => todo!("to implement for op Not, And and Or")
             }
             
             frame.pc += op.op_len();
