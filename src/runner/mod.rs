@@ -157,7 +157,18 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
                     frame.stack.push(Self::ge(arg1, arg2)?);
                 }
 
-                _ => todo!("to implement for op Not, And and Or")
+                Op::Not => {
+                    let arg = Self::pop_1(frame)?;
+                    frame.stack.push(Self::not(arg)?);
+                }
+                Op::And => {
+                    let (arg1, arg2) = Self::pop_2(frame)?;
+                    frame.stack.push(Self::and(arg1, arg2)?);
+                }
+                Op::Or => {
+                    let (arg1, arg2) = Self::pop_2(frame)?;
+                    frame.stack.push(Self::or(arg1, arg2)?);
+                }
             }
             
             frame.pc += op.op_len();
@@ -268,10 +279,7 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
             (Value::Float(arg1), Value::Int(arg2)) => Ok(Value::bool(arg1 == arg2 as f64)),
             (Value::Float(arg1), Value::Float(arg2)) => Ok(Value::bool(arg1 == arg2)),
             (Value::Bool(arg1), Value::Bool(arg2)) => Ok(Value::bool(arg1 == arg2)),
-            (arg1, arg2) => Err(Error::TypeError {
-                op: Op::Eq,
-                arg_kinds: ArgKinds::new(vec![arg1.kind(), arg2.kind()]),
-            }),
+            (_arg1, _arg2) => Ok(Value::bool(false)),
         }
     }
 
@@ -283,10 +291,7 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
             (Value::Float(arg1), Value::Int(arg2)) => Ok(Value::bool(arg1 != arg2 as f64)),
             (Value::Float(arg1), Value::Float(arg2)) => Ok(Value::bool(arg1 != arg2)),
             (Value::Bool(arg1), Value::Bool(arg2)) => Ok(Value::bool(arg1 != arg2)),
-            (arg1, arg2) => Err(Error::TypeError {
-                op: Op::Ne,
-                arg_kinds: ArgKinds::new(vec![arg1.kind(), arg2.kind()]),
-            }),
+            (_arg1, _arg2) => Ok(Value::bool(true)),
         }
     }
 
@@ -337,6 +342,36 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
             (Value::Float(arg1), Value::Float(arg2)) => Ok(Value::bool(arg1 >= arg2)),
             (arg1, arg2) => Err(Error::TypeError {
                 op: Op::Ge,
+                arg_kinds: ArgKinds::new(vec![arg1.kind(), arg2.kind()]),
+            }),
+        }
+    }
+
+    fn not(arg: Value) -> Result<Value> {
+        match arg {
+            Value::Bool(arg) => Ok(Value::bool(!arg)),
+            arg => Err(Error::TypeError {
+                op: Op::Not,
+                arg_kinds: ArgKinds::new(vec![arg.kind()]),
+            }),
+        }
+    }
+
+    fn and(arg1: Value, arg2: Value) -> Result<Value> {
+        match (arg1, arg2) {
+            (Value::Bool(arg1), Value::Bool(arg2)) => Ok(Value::bool(arg1 && arg2)),
+            (arg1, arg2) => Err(Error::TypeError {
+                op: Op::And,
+                arg_kinds: ArgKinds::new(vec![arg1.kind(), arg2.kind()]),
+            }),
+        }
+    }
+
+    fn or(arg1: Value, arg2: Value) -> Result<Value> {
+        match (arg1, arg2) {
+            (Value::Bool(arg1), Value::Bool(arg2)) => Ok(Value::bool(arg1 || arg2)),
+            (arg1, arg2) => Err(Error::TypeError {
+                op: Op::Or,
                 arg_kinds: ArgKinds::new(vec![arg1.kind(), arg2.kind()]),
             }),
         }
@@ -609,7 +644,401 @@ mod tests {
         });
     }
 
+    #[test]
     fn test_simple_compare() {
-        // TODO (PeterlitsZo): Waiting the supportion of op And.
+        let program = indoc! { r#"
+            ifunc 0 {
+                EQ
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap_err(), Error::EmptyStack);
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_INT        1
+                LOAD_INT        1
+                EQ
+
+                LOAD_INT        1
+                LOAD_INT        2
+                EQ
+                NOT
+                AND
+
+                LOAD_INT        -1
+                LOAD_FLOAT      -1.0
+                EQ
+                AND
+
+                LOAD_NULL
+                LOAD_NULL
+                EQ
+                AND
+
+                LOAD_NULL
+                LOAD_INT        1
+                EQ
+                NOT
+                AND
+
+                LOAD_FLOAT      -1.0
+                LOAD_FLOAT      -1.0
+                EQ
+                AND
+
+                LOAD_FLOAT      -1.0
+                LOAD_INT        -1
+                EQ
+                AND
+
+                LOAD_BOOL       true
+                LOAD_BOOL       false
+                EQ
+                NOT
+                AND
+
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap(), Value::bool(true));
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_INT        1
+                LOAD_INT        1
+                NE
+
+                LOAD_INT        1
+                LOAD_INT        2
+                NE
+                NOT
+                OR
+
+                LOAD_INT        -1
+                LOAD_FLOAT      -1.0
+                NE
+                OR
+
+                LOAD_NULL
+                LOAD_NULL
+                NE
+                OR
+
+                LOAD_NULL
+                LOAD_INT        1
+                NE
+                NOT
+                OR
+
+                LOAD_FLOAT      -1.0
+                LOAD_FLOAT      -1.0
+                NE
+                OR
+
+                LOAD_FLOAT      -1.0
+                LOAD_INT        -1
+                NE
+                OR
+
+                LOAD_BOOL       true
+                LOAD_BOOL       false
+                NE
+                NOT
+                OR
+
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap(), Value::bool(false));
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_INT        1
+                LOAD_INT        2
+                LT
+
+                LOAD_INT        1
+                LOAD_INT        1
+                LT
+                NOT
+                AND
+
+                LOAD_INT        2
+                LOAD_INT        1
+                LT
+                NOT
+                AND
+
+                LOAD_INT        1
+                LOAD_FLOAT      1.0
+                LT
+                NOT
+                AND
+
+                LOAD_FLOAT      1.0
+                LOAD_INT        1
+                LT
+                NOT
+                AND
+
+                LOAD_FLOAT      1.0
+                LOAD_FLOAT      1.0
+                LT
+                NOT
+                AND
+
+                LOAD_FLOAT      1.0
+                LOAD_FLOAT      2.0
+                LT
+                AND
+
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap(), Value::bool(true));
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_NULL
+                LOAD_NULL
+                LT
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap_err(), Error::TypeError {
+            op: Op::Lt,
+            arg_kinds: ArgKinds::new(vec![ValueKind::Null, ValueKind::Null])
+        });
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_INT        1
+                LOAD_INT        1
+                LE
+
+                LOAD_INT        1
+                LOAD_FLOAT      1.0
+                LE
+                AND
+
+                LOAD_FLOAT      0.1
+                LOAD_INT        1
+                LE
+                AND
+
+                LOAD_FLOAT      1.0
+                LOAD_FLOAT      2.0
+                LE
+                AND
+
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap(), Value::bool(true));
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_NULL
+                LOAD_NULL
+                LE
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap_err(), Error::TypeError {
+            op: Op::Le,
+            arg_kinds: ArgKinds::new(vec![ValueKind::Null, ValueKind::Null])
+        });
+        
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_INT        1
+                LOAD_INT        1
+                GT
+                NOT
+
+                LOAD_INT        1
+                LOAD_FLOAT      1.0
+                GT
+                NOT
+                AND
+
+                LOAD_FLOAT      0.1
+                LOAD_INT        1
+                GT
+                NOT
+                AND
+
+                LOAD_FLOAT      1.0
+                LOAD_FLOAT      2.0
+                GT
+                NOT
+                AND
+
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap(), Value::bool(true));
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_NULL
+                LOAD_NULL
+                GT
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap_err(), Error::TypeError {
+            op: Op::Gt,
+            arg_kinds: ArgKinds::new(vec![ValueKind::Null, ValueKind::Null])
+        });
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_INT        1
+                LOAD_INT        1
+                GE
+
+                LOAD_INT        1
+                LOAD_FLOAT      1.0
+                GE
+                AND
+
+                LOAD_FLOAT      0.1
+                LOAD_INT        1
+                GE
+                NOT
+                AND
+
+                LOAD_FLOAT      1.0
+                LOAD_FLOAT      2.0
+                GE
+                NOT
+                AND
+
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap(), Value::bool(true));
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_NULL
+                LOAD_NULL
+                GE
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap_err(), Error::TypeError {
+            op: Op::Ge,
+            arg_kinds: ArgKinds::new(vec![ValueKind::Null, ValueKind::Null])
+        });
+    }
+
+    #[test]
+    fn test_simple_logical() {
+        let program = indoc! { r#"
+            ifunc 0 {
+                NOT
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap_err(), Error::EmptyStack);
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_BOOL       true
+                NOT
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap(), Value::bool(false));
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_BOOL       false
+                NOT
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap(), Value::bool(true));
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_BOOL       true
+                LOAD_BOOL       true
+                AND
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap(), Value::bool(true));
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_BOOL       true
+                LOAD_BOOL       false
+                AND
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap(), Value::bool(false));
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_BOOL       false
+                LOAD_BOOL       true
+                OR
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap(), Value::bool(true));
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_BOOL       false
+                LOAD_BOOL       false
+                OR
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap(), Value::bool(false));
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_INT        1
+                NOT
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap_err(), Error::TypeError {
+            op: Op::Not,
+            arg_kinds: ArgKinds::new(vec![ValueKind::Int])
+        });
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_INT        1
+                LOAD_BOOL       true
+                AND
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap_err(), Error::TypeError {
+            op: Op::And,
+            arg_kinds: ArgKinds::new(vec![ValueKind::Int, ValueKind::Bool])
+        });
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_NULL
+                LOAD_INT        1
+                OR
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap_err(), Error::TypeError {
+            op: Op::Or,
+            arg_kinds: ArgKinds::new(vec![ValueKind::Null, ValueKind::Int])
+        });
     }
 }
