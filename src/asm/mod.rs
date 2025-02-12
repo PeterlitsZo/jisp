@@ -67,9 +67,32 @@ impl IFunc {
     }
 }
 
+/// The label in the [Asm].
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+pub(super) struct Label {
+    name: String,
+}
+
+impl Label {
+    /// Create a new [Label] by name.
+    pub(super) fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+        }
+    }
+
+    /// Get the name of the label.
+    pub(super) fn name(&self) -> &str {
+        &self.name
+    }
+}
+
 /// The [Asm] statement.
 #[derive(Debug, PartialEq, Clone)]
 pub(super) enum Stat {
+    /// The label.  It can be used to jump to.
+    Label(Label),
+
     /// Pop from the ifunc stack top and return the popped value from the
     /// running ifunc.
     Return,

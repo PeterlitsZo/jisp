@@ -56,6 +56,8 @@ impl IFuncBuilder {
     /// Push a [Stat].
     fn push_stat(&mut self, stat: &Stat) -> &mut Self {
         match stat {
+            Stat::Label(..) => self,
+
             Stat::Return => self.push_op(Op::Return),
 
             Stat::LoadNull => self.push_op(Op::LoadNull),

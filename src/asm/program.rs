@@ -14,7 +14,7 @@
 
 use std::{iter::Peekable, str::Chars};
 
-use super::{Asm, Stat};
+use super::{Asm, Label, Stat};
 use super::{IFuncBuilder, AsmBuilder};
 
 enum ParserState {
@@ -97,7 +97,7 @@ impl<'a> Parser<'a> {
             Part::IFunc => {
                 assert_eq!(tokens.len(), 3);
                 assert_eq!(tokens[1], Token::Int(self.cur_ifunc_cnt));
-                assert_eq!(tokens[2], Token::LBRACE);
+                assert_eq!(tokens[2], Token::Lbrace);
                 self.state = ParserState::IFuncBody;
             }
         }
@@ -105,14 +105,28 @@ impl<'a> Parser<'a> {
 
     fn parse_ifunc_body(&mut self, tokens: &[Token]) {
         // If the line is `}`.  It means the end of the i-function.
-        if tokens.len() == 1 && tokens[0] == Token::RBRACE {
+        if tokens.len() == 1 && tokens[0] == Token::Rbrace {
             self.cur_ifunc_cnt += 1;
             self.state = ParserState::Init;
             self.asm_builder.push_ifunc(self.ifunc_builder.build());
             return;
         }
 
-        // Parse the line as a [Stat] and push it to the building i-function.
+        let is_label =
+            tokens.len() == 3 &&
+            tokens.first() == Some(&Token::Dot) &&
+            tokens.last() == Some(&Token::Colon);
+
+        if is_label {
+            let label = Stat::Label(Label::new(tokens[1].as_name().unwrap()));
+            self.ifunc_builder.push_stat(label);
+        } else {
+            self.push_stat(tokens);
+        }
+    }
+    
+    // Parse the line as a [Stat] and push it to the building i-function.
+    fn push_stat(&mut self, tokens: &[Token]) {
         let op = match tokens[0] {
             Token::Name(ref name) => name,
             _ => panic!("unexpected token: {:?}", tokens[0]),
@@ -178,10 +192,16 @@ enum Token {
     Float(f64),
 
     /// The `{` token.
-    LBRACE,
+    Lbrace,
 
-    /// The `{` token.
-    RBRACE,
+    /// The `}` token.
+    Rbrace,
+
+    /// The `.` token.
+    Dot,
+
+    /// The `:` token.
+    Colon,
 }
 
 impl Token {
@@ -299,19 +319,27 @@ impl<'a> Iterator for Tokenizer<'a> {
                     self.source.next();
                     continue;
                 }
+                'a'..='z' | 'A'..='Z' | '_' => {
+                    return Some(self.next_name());
+                }
                 '-' | '0'..='9' => {
                     return Some(self.next_number());
                 }
                 '{' => {
                     self.source.next();
-                    return Some(Token::LBRACE);
+                    return Some(Token::Lbrace);
                 }
                 '}' => {
                     self.source.next();
-                    return Some(Token::RBRACE);
+                    return Some(Token::Rbrace);
                 }
-                'a'..='z' | 'A'..='Z' | '_' | '.' => {
-                    return Some(self.next_name());
+                '.' => {
+                    self.source.next();
+                    return Some(Token::Dot);
+                }
+                ':' => {
+                    self.source.next();
+                    return Some(Token::Colon);
                 }
                 _ => panic!("unexpected character: {}", ch),
             }
@@ -323,7 +351,7 @@ impl<'a> Iterator for Tokenizer<'a> {
 mod tests {
     use indoc::indoc;
 
-    use crate::asm::Stat;
+    use crate::asm::{Label, Stat};
 
     use super::*;
 
@@ -501,6 +529,29 @@ mod tests {
                     .push_stat(Stat::LoadBool(false))
                     .push_stat(Stat::Or)
                     .push_stat(Stat::Not)
+                    .push_stat(Stat::Return)
+                    .build()
+            })
+            .build();
+        assert_eq!(asm, wanted);
+    }
+
+    #[test]
+    fn test_label_and_jump() {
+        let mut parser = Parser::new(indoc! {r#"
+            ifunc 0 {
+                LOAD_NULL
+              .label.000001:
+                RETURN
+            }
+        "#});
+        let asm = parser.parse();
+
+        let wanted = Asm::builder()
+            .push_ifunc_by(|mut ifunc_builder| {
+                ifunc_builder
+                    .push_stat(Stat::LoadNull)
+                    .push_stat(Stat::Label(Label::new("label.000001")))
                     .push_stat(Stat::Return)
                     .build()
             })
