@@ -68,6 +68,8 @@ impl IFunc {
 }
 
 /// The label in the [Asm].
+/// 
+/// XXX (PeterlitsZo): Good idea to make the name `Arc<String>`?
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub(super) struct Label {
     name: String,

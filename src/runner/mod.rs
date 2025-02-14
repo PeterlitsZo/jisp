@@ -107,6 +107,10 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
                     Self::pop_1(frame)?;
                 }
 
+                Op::JumpIfTrue => todo!(),
+                Op::JumpIfFalse => todo!(),
+                Op::Jump => todo!(),
+
                 Op::Add => {
                     let (arg1, arg2) = Self::pop_2(frame)?;
                     frame.stack.push(Self::add(arg1, arg2)?);
@@ -388,7 +392,7 @@ mod tests {
 
     fn run_program(program: &str) -> Result<Value> {
         let asm = Asm::from_program(program);
-        let bytecode = Bytecode::builder().parse_asm(&asm).build();
+        let bytecode = Bytecode::builder().parse_asm(&asm).unwrap().build();
         let mut runner = Runner::new();
         runner.run(&bytecode)
     }

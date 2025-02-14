@@ -14,6 +14,10 @@ pub(crate) enum Op {
 
     Pop,
 
+    JumpIfTrue,
+    JumpIfFalse,
+    Jump,
+
     Add,
     Sub,
     Mul,
@@ -42,6 +46,10 @@ impl Op {
     const OP_LOAD_BOOL: u8 = Self::LoadBool as u8;
 
     const OP_POP: u8 = Self::Pop as u8;
+
+    const OP_JUMP_IF_TRUE: u8 = Self::JumpIfTrue as u8;
+    const OP_JUMP_IF_FALSE: u8 = Self::JumpIfFalse as u8;
+    const OP_JUMP: u8 = Self::Jump as u8;
 
     const OP_ADD: u8 = Self::Add as u8;
     const OP_SUB: u8 = Self::Sub as u8;
@@ -72,6 +80,10 @@ impl Op {
             Self::LoadBool => Self::OP_LOAD_BOOL,
 
             Self::Pop => Self::OP_POP,
+
+            Self::JumpIfTrue => Self::OP_JUMP_IF_TRUE,
+            Self::JumpIfFalse => Self::OP_JUMP_IF_FALSE,
+            Self::Jump => Self::OP_JUMP,
 
             Self::Add => Self::OP_ADD,
             Self::Sub => Self::OP_SUB,
@@ -104,6 +116,10 @@ impl Op {
             Self::OP_LOAD_BOOL => Some(Self::LoadBool),
 
             Self::OP_POP => Some(Self::Pop),
+
+            Self::OP_JUMP_IF_TRUE => Some(Self::JumpIfTrue),
+            Self::OP_JUMP_IF_FALSE => Some(Self::JumpIfFalse),
+            Self::OP_JUMP => Some(Self::Jump),
 
             Self::OP_ADD => Some(Self::Add),
             Self::OP_SUB => Some(Self::Sub),
@@ -138,6 +154,10 @@ impl Op {
             Self::LoadBool => 2,
 
             Self::Pop => 1,
+
+            Self::JumpIfTrue => 9,
+            Self::JumpIfFalse => 9,
+            Self::Jump => 9,
 
             Self::Add => 1,
             Self::Sub => 1,

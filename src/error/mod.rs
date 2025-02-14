@@ -2,11 +2,16 @@ use std::fmt::Debug;
 
 use thiserror::Error;
 
+use crate::asm::Label;
 use crate::bytecode::Op;
 use crate::value::ValueKind;
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub(super) enum Error {
+    /// Unknown label - bad ASM.
+    #[error("unknown label: {0:?}")]
+    UnknownLabel(Label),
+
     /// The bytecode is empty - and cannot be run by runner.
     #[error("empty bytecode")]
     EmptyBytecode,
