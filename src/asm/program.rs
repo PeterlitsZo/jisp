@@ -156,6 +156,22 @@ impl<'a> Parser<'a> {
 
             "POP" => self.ifunc_builder.push_stat(Stat::Pop),
 
+            "JUMP_IF_TRUE" => {
+                assert_eq!(tokens[1], Token::Dot);
+                let label = Label::new(tokens[2].as_name().unwrap());
+                self.ifunc_builder.push_stat(Stat::JumpIfTrue(label))
+            }
+            "JUMP_IF_FALSE" => {
+                assert_eq!(tokens[1], Token::Dot);
+                let label = Label::new(tokens[2].as_name().unwrap());
+                self.ifunc_builder.push_stat(Stat::JumpIfFalse(label))
+            }
+            "JUMP" => {
+                assert_eq!(tokens[1], Token::Dot);
+                let label = Label::new(tokens[2].as_name().unwrap());
+                self.ifunc_builder.push_stat(Stat::Jump(label))
+            }
+
             "ADD" => self.ifunc_builder.push_stat(Stat::Add),
             "SUB" => self.ifunc_builder.push_stat(Stat::Sub),
             "MUL" => self.ifunc_builder.push_stat(Stat::Mul),
@@ -540,8 +556,18 @@ mod tests {
     fn test_label_and_jump() {
         let mut parser = Parser::new(indoc! {r#"
             ifunc 0 {
-                LOAD_NULL
               .label.000001:
+                LOAD_BOOL       true
+                JUMP_IF_TRUE    .label.000001
+
+              .label.000002:
+                LOAD_BOOL       false
+                JUMP_IF_FALSE   .label.000002
+
+              .label.000003:
+                JUMP            .label.000003
+
+                LOAD_NULL
                 RETURN
             }
         "#});
@@ -550,8 +576,15 @@ mod tests {
         let wanted = Asm::builder()
             .push_ifunc_by(|mut ifunc_builder| {
                 ifunc_builder
-                    .push_stat(Stat::LoadNull)
                     .push_stat(Stat::Label(Label::new("label.000001")))
+                    .push_stat(Stat::LoadBool(true))
+                    .push_stat(Stat::JumpIfTrue(Label::new("label.000001")))
+                    .push_stat(Stat::Label(Label::new("label.000002")))
+                    .push_stat(Stat::LoadBool(false))
+                    .push_stat(Stat::JumpIfFalse(Label::new("label.000002")))
+                    .push_stat(Stat::Label(Label::new("label.000003")))
+                    .push_stat(Stat::Jump(Label::new("label.000003")))
+                    .push_stat(Stat::LoadNull)
                     .push_stat(Stat::Return)
                     .build()
             })

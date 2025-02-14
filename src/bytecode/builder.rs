@@ -73,6 +73,10 @@ impl IFuncBuilder {
 
             Stat::Pop => self.push_op(Op::Pop),
 
+            Stat::JumpIfTrue(..) => todo!(),
+            Stat::JumpIfFalse(..) => todo!(),
+            Stat::Jump(..) => todo!(),
+
             Stat::Add => self.push_op(Op::Add),
             Stat::Sub => self.push_op(Op::Sub),
             Stat::Mul => self.push_op(Op::Mul),

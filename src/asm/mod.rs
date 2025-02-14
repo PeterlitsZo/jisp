@@ -109,6 +109,13 @@ pub(super) enum Stat {
     /// Drop a value from the ifunc stack top.
     Pop,
 
+    /// Jump to the label if the ifunc stack top is `true` (the value will be consumed).
+    JumpIfTrue(Label),
+    /// Jump to the label if the ifunc stack top is `false` (the value will be consumed).
+    JumpIfFalse(Label),
+    /// Jump to the label.
+    Jump(Label),
+
     /// Add two values from the stack top and push the result to the stack top.
     Add,
     /// Subtract two values from the stack top and push the result to the stack top.
