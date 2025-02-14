@@ -69,6 +69,10 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
             let op = ifunc.code()[frame.pc];
             let op = Op::from_u8(op).ok_or(Error::UnknownOpcode(op))?;
 
+            // The flag to indicate if the op has jumped or not (if jumped, we
+            // do not move the pc because it is already moved).
+            let mut jumped = false;
+
             match op {
                 Op::Return => {
                     let value = Self::pop_1(frame)?;
@@ -107,9 +111,63 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
                     Self::pop_1(frame)?;
                 }
 
-                Op::JumpIfTrue => todo!(),
-                Op::JumpIfFalse => todo!(),
-                Op::Jump => todo!(),
+                Op::JumpIfTrue => {
+                    // XXX (PeterlitsZo): How about move those code to helper
+                    // struct as its methods?  e.g.
+                    //
+                    // ```rust
+                    // let addr = opMan.loadForJumpIfTrue();
+                    // ```
+                    //
+                    // Not sure if it is a good idea.
+
+                    if ifunc.code().len() < frame.pc + Op::JumpIfTrue.op_len() {
+                        return Err(Error::BadOpcode(op));
+                    }
+                    let addr = &ifunc.code()[frame.pc + 1..frame.pc + 9];
+                    let addr = u64::from_le_bytes(addr.try_into().unwrap());
+                    let addr = addr as usize;
+
+                    let arg = Self::pop_1(frame)?;
+                    let arg = arg.as_bool()
+                        .ok_or_else(|| Error::TypeError {
+                            op: Op::JumpIfTrue,
+                            arg_kinds: ArgKinds::new(vec![arg.kind()])
+                        })?;
+                    if arg {
+                        frame.pc = addr;
+                        jumped = true;
+                    }
+                }
+                Op::JumpIfFalse => {
+                    if ifunc.code().len() < frame.pc + Op::JumpIfFalse.op_len() {
+                        return Err(Error::BadOpcode(op));
+                    }
+                    let addr = &ifunc.code()[frame.pc + 1..frame.pc + 9];
+                    let addr = u64::from_le_bytes(addr.try_into().unwrap());
+                    let addr = addr as usize;
+
+                    let arg = Self::pop_1(frame)?;
+                    let arg = arg.as_bool()
+                        .ok_or_else(|| Error::TypeError {
+                            op: Op::JumpIfFalse,
+                            arg_kinds: ArgKinds::new(vec![arg.kind()])
+                        })?;
+                    if !arg {
+                        frame.pc = addr;
+                        jumped = true;
+                    }
+                }
+                Op::Jump => {
+                    if ifunc.code().len() < frame.pc + Op::Jump.op_len() {
+                        return Err(Error::BadOpcode(op));
+                    }
+                    let addr = &ifunc.code()[frame.pc + 1..frame.pc + 9];
+                    let addr = u64::from_le_bytes(addr.try_into().unwrap());
+                    let addr = addr as usize;
+                    frame.pc = addr;
+                    jumped = true;
+                }
 
                 Op::Add => {
                     let (arg1, arg2) = Self::pop_2(frame)?;
@@ -174,8 +232,10 @@ impl<'r, 'b> FrameRunner<'r, 'b> {
                     frame.stack.push(Self::or(arg1, arg2)?);
                 }
             }
-            
-            frame.pc += op.op_len();
+
+            if !jumped {    
+                frame.pc += op.op_len();
+            }
         }
     }
 
@@ -1044,5 +1104,84 @@ mod tests {
             op: Op::Or,
             arg_kinds: ArgKinds::new(vec![ValueKind::Null, ValueKind::Int])
         });
+    }
+
+    #[test]
+    fn test_label_and_jump() {
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_INT        1
+                LOAD_FLOAT      2.0
+                ADD
+                LOAD_FLOAT      3.0
+                EQ
+                JUMP_IF_FALSE   .label.false
+                LOAD_BOOL       true
+                JUMP            .label.end
+              .label.false:
+                LOAD_BOOL       false
+              .label.end:
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap(), Value::bool(true));
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_INT        1
+                LOAD_FLOAT      2.0
+                ADD
+                LOAD_FLOAT      3.0
+                EQ
+                JUMP_IF_TRUE    .label.true
+                LOAD_BOOL       false
+                JUMP            .label.end
+              .label.true:
+                LOAD_BOOL       true
+              .label.end:
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap(), Value::bool(true));
+
+        let program = indoc! { r#"
+            ifunc 0 {
+              .label.true:
+                LOAD_NULL
+                JUMP_IF_TRUE    .label.true
+                RETURN
+            }
+        "# };
+        // TODO (PeterlitsZo): Support `just fmt` and format the code.
+        assert_eq!(
+            run_program(program).unwrap_err(),
+            Error::TypeError { op: Op::JumpIfTrue, arg_kinds: ArgKinds::new(vec![ValueKind::Null]) }
+        );
+
+        let program = indoc! { r#"
+            ifunc 0 {
+              .label.false:
+                LOAD_NULL
+                JUMP_IF_FALSE   .label.false
+                RETURN
+            }
+        "# };
+        assert_eq!(
+            run_program(program).unwrap_err(),
+            Error::TypeError { op: Op::JumpIfFalse, arg_kinds: ArgKinds::new(vec![ValueKind::Null]) }
+        );
+
+        let program = indoc! { r#"
+            ifunc 0 {
+                LOAD_BOOL       false
+                JUMP_IF_FALSE   .label.true
+                LOAD_BOOL       false
+                RETURN
+              .label.true:
+                LOAD_BOOL       true
+                RETURN
+            }
+        "# };
+        assert_eq!(run_program(program).unwrap(), Value::bool(true));
     }
 }
