@@ -1,8 +1,8 @@
 //! The builders for [Bytecode] and [IFunc].
 
-use std::mem::swap;
+use std::{collections::BTreeMap, mem::swap};
 
-use crate::asm::{Asm, Stat};
+use crate::asm::{Asm, Label, Stat};
 
 use super::{op::Op, Bytecode, IFunc};
 
@@ -43,6 +43,9 @@ impl BytecodeBuilder {
 /// The [IFunc] builder.
 pub(super) struct IFuncBuilder {
     ifunc: IFunc,
+
+    cur_addr: usize,
+    label_to_addr: BTreeMap<Label, usize>,
 }
 
 impl IFuncBuilder {
@@ -50,13 +53,16 @@ impl IFuncBuilder {
     pub(super) fn new() -> Self {
         Self {
             ifunc: IFunc::new(),
+
+            cur_addr: 0,
+            label_to_addr: BTreeMap::new(),
         }
     }
 
     /// Push a [Stat].
     fn push_stat(&mut self, stat: &Stat) -> &mut Self {
         match stat {
-            Stat::Label(..) => self,
+            Stat::Label(label) => self.mem_label(label),
 
             Stat::Return => self.push_op(Op::Return),
 
@@ -90,6 +96,7 @@ impl IFuncBuilder {
     /// Push an opcode without arguments.
     fn push_op(&mut self, op: Op) -> &mut Self {
         self.ifunc.code.push(op.into_u8());
+        self.cur_addr += op.op_len();
         self
     }
 
@@ -97,6 +104,13 @@ impl IFuncBuilder {
     fn push_op_args(&mut self, op: Op, args: &[u8]) -> &mut Self {
         self.ifunc.code.push(op.into_u8());
         self.ifunc.code.extend(args);
+        self.cur_addr += op.op_len();
+        self
+    }
+
+    /// Memorize the label and its address.
+    fn mem_label(&mut self, label: &Label) -> &mut Self {
+        self.label_to_addr.insert(label.clone(), self.cur_addr);
         self
     }
 
@@ -104,6 +118,8 @@ impl IFuncBuilder {
     fn build(&mut self) -> IFunc {
         let mut tmp_ifunc = IFunc::new();
         swap(&mut tmp_ifunc, &mut self.ifunc);
+        self.cur_addr = 0;
+        self.label_to_addr.clear();
         tmp_ifunc
     }
 }
