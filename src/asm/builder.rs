@@ -51,6 +51,12 @@ impl IFuncBuilder {
         }
     }
 
+    /// Set the locals' number.
+    pub(super) fn set_locals(&mut self, locals: usize) -> &mut Self {
+        self.ifunc.locals = locals;
+        self
+    }
+
     /// Push a [Stat].
     pub(super) fn push_stat(&mut self, stat: Stat) -> &mut Self {
         self.ifunc.stats.push(stat);

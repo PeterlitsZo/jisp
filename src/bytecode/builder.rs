@@ -78,6 +78,9 @@ impl IFuncBuilder {
 
             Stat::Return => self.push_op(Op::Return),
 
+            Stat::StoreLocal(_) => todo!(),
+            Stat::LoadLocal(_) => todo!(),
+
             Stat::LoadNull => self.push_op(Op::LoadNull),
             Stat::LoadInt(val) => self.push_op_args(Op::LoadInt, &val.to_le_bytes()),
             Stat::LoadFloat(val) => self.push_op_args(Op::LoadFloat, &val.to_le_bytes()),

@@ -48,12 +48,16 @@ impl Asm {
 /// It contains the statments ([Stat]) to run.
 #[derive(Debug, PartialEq)]
 pub(super) struct IFunc {
+    locals: usize,
     stats: Vec<Stat>,
 }
 
 impl IFunc {
     fn new() -> Self {
-        Self { stats: vec![] }
+        Self {
+            locals: 0,
+            stats: vec![]
+        }
     }
 
     /// Get the [IFunc] builder.
@@ -98,6 +102,11 @@ pub(super) enum Stat {
     /// Pop from the ifunc stack top and return the popped value from the
     /// running ifunc.
     Return,
+
+    /// Store the value of the stack top to the local variable (the value will be consumed).
+    StoreLocal(u32),
+    /// Load the value of the local variable and push it to the ifunc stack top.
+    LoadLocal(u32),
 
     /// Load the null and push it to the ifunc stack top.
     LoadNull,

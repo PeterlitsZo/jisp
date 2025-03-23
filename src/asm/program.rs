@@ -95,9 +95,23 @@ impl<'a> Parser<'a> {
             // If the part is defined as i-function.  This line should be like
             // `ifunc 0 {`.
             Part::IFunc => {
-                assert_eq!(tokens.len(), 3);
+                assert_eq!(tokens.len() % 3, 0);
                 assert_eq!(tokens[1], Token::Int(self.cur_ifunc_cnt));
-                assert_eq!(tokens[2], Token::Lbrace);
+
+                for i in (2..(tokens.len() - 1)).step_by(3) {
+                    assert_eq!(tokens[i + 1], Token::Eq);
+                    let name = tokens[i].as_name().unwrap();
+                    let val = tokens[i + 2].as_int().unwrap();
+
+                    match name.as_str() {
+                        "locals" => {
+                            self.ifunc_builder.set_locals(val as usize);
+                        }
+                        _ => panic!("unexpected name: {:?}", name),
+                    }
+                }
+
+                assert_eq!(tokens.last().unwrap(), &Token::Lbrace);
                 self.state = ParserState::IFuncBody;
             }
         }
@@ -133,6 +147,15 @@ impl<'a> Parser<'a> {
         };
         match op.as_str() {
             "RETURN" => self.ifunc_builder.push_stat(Stat::Return),
+
+            "STORE_LOCAL" => {
+                let idx = tokens[1].as_int().unwrap();
+                self.ifunc_builder.push_stat(Stat::StoreLocal(idx as u32))
+            }
+            "LOAD_LOCAL" => {
+                let idx = tokens[1].as_int().unwrap();
+                self.ifunc_builder.push_stat(Stat::LoadLocal(idx as u32))
+            }
 
             "LOAD_NULL" => self.ifunc_builder.push_stat(Stat::LoadNull),
             "LOAD_INT" => {
@@ -218,6 +241,9 @@ enum Token {
 
     /// The `:` token.
     Colon,
+
+    /// The `=` token.
+    Eq,
 }
 
 impl Token {
@@ -341,21 +367,16 @@ impl<'a> Iterator for Tokenizer<'a> {
                 '-' | '0'..='9' => {
                     return Some(self.next_number());
                 }
-                '{' => {
+                '{' | '}' | '.' | ':' | '=' => {
                     self.source.next();
-                    return Some(Token::Lbrace);
-                }
-                '}' => {
-                    self.source.next();
-                    return Some(Token::Rbrace);
-                }
-                '.' => {
-                    self.source.next();
-                    return Some(Token::Dot);
-                }
-                ':' => {
-                    self.source.next();
-                    return Some(Token::Colon);
+                    return match ch {
+                        '{' => Some(Token::Lbrace),
+                        '}' => Some(Token::Rbrace),
+                        '.' => Some(Token::Dot),
+                        ':' => Some(Token::Colon),
+                        '=' => Some(Token::Eq),
+                        _ => unreachable!(),
+                    };
                 }
                 _ => panic!("unexpected character: {}", ch),
             }
@@ -374,7 +395,7 @@ mod tests {
     #[test]
     fn test_simple() {
         let mut parser = Parser::new(indoc! {r#"
-            ifunc 0 {
+            ifunc 0 locals=0 {
                 LOAD_NULL
                 LOAD_INT        42
                 LOAD_FLOAT      3.14
@@ -406,7 +427,7 @@ mod tests {
     #[test]
     fn test_calc() {
         let mut parser = Parser::new(indoc! {r#"
-            ifunc 0 {
+            ifunc 0 locals=0 {
                 LOAD_INT        1
                 LOAD_INT        2
                 ADD
@@ -454,7 +475,7 @@ mod tests {
     #[test]
     fn test_compare() {
         let mut parser = Parser::new(indoc! {r#"
-            ifunc 0 {
+            ifunc 0 locals=0 {
                 LOAD_INT        -1
                 LOAD_INT        -2
                 LT
@@ -486,7 +507,7 @@ mod tests {
         assert_eq!(asm, wanted);
 
         let mut parser = Parser::new(indoc! {r#"
-            ifunc 0 {
+            ifunc 0 locals=0 {
                 LOAD_INT        1
                 LOAD_INT        2
                 GT
@@ -521,7 +542,7 @@ mod tests {
     #[test]
     fn test_logical() {
         let mut parser = Parser::new(indoc! {r#"
-            ifunc 0 {
+            ifunc 0 locals=0 {
                 LOAD_BOOL       true
                 LOAD_BOOL       false
                 AND
@@ -555,7 +576,7 @@ mod tests {
     #[test]
     fn test_label_and_jump() {
         let mut parser = Parser::new(indoc! {r#"
-            ifunc 0 {
+            ifunc 0 locals=0 {
               .label.000001:
                 LOAD_BOOL       true
                 JUMP_IF_TRUE    .label.000001
@@ -585,6 +606,41 @@ mod tests {
                     .push_stat(Stat::Label(Label::new("label.000003")))
                     .push_stat(Stat::Jump(Label::new("label.000003")))
                     .push_stat(Stat::LoadNull)
+                    .push_stat(Stat::Return)
+                    .build()
+            })
+            .build();
+        assert_eq!(asm, wanted);
+    }
+
+    #[test]
+    fn test_locals() {
+        let mut parser = Parser::new(indoc! {r#"
+            ifunc 0 locals=2 {
+                LOAD_INT        1
+                STORE_LOCAL     0
+                LOAD_INT        2
+                STORE_LOCAL     1
+
+                LOAD_LOCAL      0
+                LOAD_LOCAL      1
+                ADD
+                RETURN
+            }
+        "#});
+        let asm = parser.parse();
+
+        let wanted = Asm::builder()
+            .push_ifunc_by(|mut ifunc_builder| {
+                ifunc_builder
+                    .set_locals(2)
+                    .push_stat(Stat::LoadInt(1))
+                    .push_stat(Stat::StoreLocal(0))
+                    .push_stat(Stat::LoadInt(2))
+                    .push_stat(Stat::StoreLocal(1))
+                    .push_stat(Stat::LoadLocal(0))
+                    .push_stat(Stat::LoadLocal(1))
+                    .push_stat(Stat::Add)
                     .push_stat(Stat::Return)
                     .build()
             })
